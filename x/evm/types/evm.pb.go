@@ -28,11 +28,11 @@ const _ = proto.GoGoProtoPackageIsVersion3 // please upgrade the proto package
 type Params struct {
 	// evm denom represents the token denomination used to run the EVM state
 	// transitions.
-	EvmDenom string `protobuf:"bytes,1,opt,name=evm_denom,json=evmDenom,proto3" json:"evm_denom,omitempty" yaml:"evm_denom"`
+	EvmDenom string `protobuf:"bytes,1,opt,name=evm_denom,json=evm_denom,proto3" json:"evm_denom,omitempty" yaml:"evm_denom"`
 	// enable create toggles state transitions that use the vm.Create function
-	EnableCreate bool `protobuf:"varint,2,opt,name=enable_create,json=enableCreate,proto3" json:"enable_create,omitempty" yaml:"enable_create"`
+	EnableCreate bool `protobuf:"varint,2,opt,name=enable_create,json=enable_create,proto3" json:"enable_create,omitempty" yaml:"enable_create"`
 	// enable call toggles state transitions that use the vm.Call function
-	EnableCall bool `protobuf:"varint,3,opt,name=enable_call,json=enableCall,proto3" json:"enable_call,omitempty" yaml:"enable_call"`
+	EnableCall bool `protobuf:"varint,3,opt,name=enable_call,json=enable_call,proto3" json:"enable_call,omitempty" yaml:"enable_call"`
 	// extra eips defines the additional EIPs for the vm.Config
 	ExtraEIPs []int64 `protobuf:"varint,4,rep,packed,name=extra_eips,json=extraEips,proto3" json:"extra_eips,omitempty" yaml:"extra_eips"`
 	// chain config defines the EVM chain configuration parameters
