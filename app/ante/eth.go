@@ -37,7 +37,6 @@ func NewEthSigVerificationDecorator(ek EVMKeeper) EthSigVerificationDecorator {
 // won't see the error message.
 func (esvd EthSigVerificationDecorator) AnteHandle(ctx sdk.Context, tx sdk.Tx, simulate bool, next sdk.AnteHandler) (newCtx sdk.Context, err error) {
 	chainID := esvd.evmKeeper.ChainID()
-
 	params := esvd.evmKeeper.GetParams(ctx)
 
 	ethCfg := params.ChainConfig.EthereumConfig(chainID)

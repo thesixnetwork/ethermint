@@ -58,7 +58,7 @@ func ValidateChainID(baseCmd *cobra.Command) *cobra.Command {
 		chainID, _ := cmd.Flags().GetString(flags.FlagChainID)
 
 		if !ethermint.IsValidChainID(chainID) {
-			return fmt.Errorf("invalid chain-id format: %s", chainID)
+			chainID = fmt.Sprintf("%s_%d-%d", chainID, 666, 1)
 		}
 
 		return baseRunE(cmd, args)
