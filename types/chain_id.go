@@ -31,7 +31,6 @@ func IsValidChainID(chainID string) bool {
 // chain-id in *big.Int format. The function returns an error if the chain-id has an invalid format
 func ParseChainID(chainID string) (*big.Int, error) {
 	chainID = strings.TrimSpace(chainID)
-	fmt.Println(" ######################## chainID: ", chainID)
 	if len(chainID) > 48 {
 		return nil, sdkerrors.Wrapf(ErrInvalidChainID, "chain-id '%s' cannot exceed 48 chars", chainID)
 	}
