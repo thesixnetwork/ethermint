@@ -2,7 +2,6 @@ package app
 
 import (
 	"encoding/json"
-	"fmt"
 	"math/rand"
 	"time"
 
@@ -128,7 +127,7 @@ func StateFn(cdc codec.JSONCodec, simManager *module.SimulationManager) simtypes
 		appStateFn := simapp.AppStateFn(cdc, simManager)
 		appState, simAccs, chainID, genesisTimestamp = appStateFn(r, accs, config)
 		// replace chain id with ethermint format such as chainId_666-1
-		chainID = fmt.Sprintf("%s_%d-%d", chainID, 666, 1)
+		chainID = ethermint.ChainIDJumper(chainID)
 		rawState := make(map[string]json.RawMessage)
 		err := json.Unmarshal(appState, &rawState)
 		if err != nil {

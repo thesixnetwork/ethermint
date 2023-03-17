@@ -1,8 +1,6 @@
 package ante
 
 import (
-	// "fmt"
-	"fmt"
 	"math/big"
 
 	sdk "github.com/cosmos/cosmos-sdk/types"
@@ -64,7 +62,6 @@ func (mpd MinGasPriceDecorator) AnteHandle(ctx sdk.Context, tx sdk.Tx, simulate 
 	}
 
 	if !feeCoins.IsAnyGTE(requiredFees) {
-		// fmt.Println("################## fee: ", feeCoins)
 		return ctx, sdkerrors.Wrapf(sdkerrors.ErrInsufficientFee, "provided fee < minimum global fee (%s < %s). Please increase the gas price.", feeCoins, requiredFees)
 	}
 
@@ -131,9 +128,8 @@ func (empd EthMinGasPriceDecorator) AnteHandle(ctx sdk.Context, tx sdk.Tx, simul
 
 		requiredFee := minGasPrice.Mul(gasLimit)
 		fee := sdk.NewDecFromBigInt(feeAmt)
-		
+
 		if fee.LT(requiredFee) {
-			fmt.Println("################## fee: ", fee)
 			return ctx, sdkerrors.Wrapf(
 				sdkerrors.ErrInsufficientFee,
 				"provided fee < minimum global fee (%d < %d). Please increase the priority tip (for EIP-1559 txs) or the gas prices (for access list or legacy txs)",
