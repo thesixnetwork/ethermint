@@ -60,6 +60,11 @@ func (mpd MinGasPriceDecorator) AnteHandle(ctx sdk.Context, tx sdk.Tx, simulate 
 	}
 
 	feeCoins := feeTx.GetFee()
+	if feeCoins.Empty() {
+		// feeCoins will be 200000000000000000asix if the fee is not set
+		// this is the default value for the fee
+		feeCoins = sdk.NewCoins(sdk.NewCoin(evmParams.EvmDenom, sdk.NewInt(200000000000000000)),sdk.NewCoin("usix", sdk.NewInt(200000)))
+	}
 	gas := feeTx.GetGas()
 
 	requiredFees := make(sdk.Coins, 0)
