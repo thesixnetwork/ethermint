@@ -37,11 +37,25 @@ func (mpd MinGasPriceDecorator) AnteHandle(ctx sdk.Context, tx sdk.Tx, simulate 
 		return next(ctx, tx, simulate)
 	}
 
+
+	// min_gas_price is in atto (1e-18) units, so we need to convert it to micro (1e-6) units
+	// to compare it to the fee amount in micro units
+	// minGasPrice * 1e12 = microMinGasPrice
+	// atto to microMinGasPrice
+	microMinGasPrice := minGasPrice.Quo(sdk.NewDec(1e12))
+
 	evmParams := mpd.evmKeeper.GetParams(ctx)
+	// on default, the denom will recieve the value of the evm denom only
+	// manully set the usix denom to the microMinGasPrice
+	// this will allow the fee to be paid in usix
 	minGasPrices := sdk.DecCoins{
 		{
 			Denom:  evmParams.EvmDenom,
 			Amount: minGasPrice,
+		},
+		{
+			Denom:  "usix",
+			Amount: microMinGasPrice,
 		},
 	}
 

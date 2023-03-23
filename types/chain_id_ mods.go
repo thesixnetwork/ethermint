@@ -10,6 +10,7 @@ const (
 )
 
 // Modify ChainID to be from actual cosmos init chain to ethereum compatible
+// Without any modification, the chainID will be "sixnet" then the chainID will be "sixnet_666-1"
 func ChainIDJumper(chainID string) string {
 	chainID = fmt.Sprintf("%s_%d-%d", chainID, CHAINID_NUMBER, CHAINID_EPOCH)
 	return chainID
