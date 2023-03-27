@@ -25,7 +25,7 @@ var (
 	// DefaultMinGasMultiplier is 0.5 or 50%
 	DefaultMinGasMultiplier = sdk.NewDecWithPrec(50, 2)
 	// DefaultMinGasPrice is 0 (i.e disabled)
-	DefaultMinGasPrice = sdk.ZeroDec()
+	DefaultMinGasPrice = sdk.NewDecFromInt(sdk.NewIntFromUint64(5000000000000))
 )
 
 // ParamKeyTable returns the parameter key table.
@@ -59,8 +59,8 @@ func DefaultParams() Params {
 	return Params{
 		NoBaseFee:                false,
 		BaseFeeChangeDenominator: params.BaseFeeChangeDenominator,
-		ElasticityMultiplier:     params.ElasticityMultiplier,
-		BaseFee:                  sdk.NewIntFromUint64(params.InitialBaseFee),
+		ElasticityMultiplier:     4,
+		BaseFee:                  sdk.NewIntFromUint64(5000000000000),
 		EnableHeight:             0,
 		MinGasPrice:              DefaultMinGasPrice,
 		MinGasMultiplier:         DefaultMinGasMultiplier,

@@ -9,13 +9,13 @@ import (
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	paramtypes "github.com/cosmos/cosmos-sdk/x/params/types"
 	"github.com/ethereum/go-ethereum/core/vm"
-	"github.com/evmos/ethermint/types"
+	// "github.com/evmos/ethermint/types"
 )
 
 var _ paramtypes.ParamSet = &Params{}
 
 const (
-	DefaultEVMDenom = types.AttoPhoton
+	DefaultEVMDenom = "asix"
 )
 
 // DefaultMinGasMultiplier is 0.5 or 50%
