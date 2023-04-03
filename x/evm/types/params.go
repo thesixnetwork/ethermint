@@ -67,6 +67,13 @@ var (
 	// more info check:
 	// https://github.com/ethereum/go-ethereum/blob/master/core/vm/interpreter.go#L97
 	AvailableExtraEIPs = []int64{1344, 1884, 2200, 2929, 3198, 3529}
+
+	// Define converter params
+	KeyConverterContract = []byte("ConverterContract")
+	KeyEventName         = []byte("EventName")
+	KeyEventTuple        = []byte("EventTuple")
+	KeyEventAbi          = []byte("EventAbi")
+	KeyConverterEnable   = []byte("ConverterEnable")
 )
 
 // ParamKeyTable returns the parameter key table.
@@ -75,13 +82,14 @@ func ParamKeyTable() paramtypes.KeyTable {
 }
 
 // NewParams creates a new Params instance
-func NewParams(evmDenom string, enableCreate, enableCall bool, config ChainConfig, extraEIPs ...int64) Params {
+func NewParams(evmDenom string, enableCreate, enableCall bool, config ChainConfig, converter ConverterParams ,extraEIPs ...int64) Params {
 	return Params{
 		EvmDenom:     evmDenom,
 		EnableCreate: enableCreate,
 		EnableCall:   enableCall,
 		ExtraEIPs:    extraEIPs,
 		ChainConfig:  config,
+		ConverterParams: converter,
 	}
 }
 
@@ -95,12 +103,6 @@ func DefaultParams() Params {
 		ChainConfig:         DefaultChainConfig(),
 		ExtraEIPs:           nil,
 		AllowUnprotectedTxs: DefaultAllowUnprotectedTxs,
-		ConverterParams: ConverterParams{
-			Contract: "",
-			EventName: DefaultConverterEventName,
-			Tuple: DefautConverterEventTuple,
-			Abi: DefautConverterEventAbi,
-		},
 	}
 }
 
@@ -113,6 +115,11 @@ func (p *Params) ParamSetPairs() paramtypes.ParamSetPairs {
 		paramtypes.NewParamSetPair(ParamStoreKeyExtraEIPs, &p.ExtraEIPs, validateEIPs),
 		paramtypes.NewParamSetPair(ParamStoreKeyChainConfig, &p.ChainConfig, validateChainConfig),
 		paramtypes.NewParamSetPair(ParamStoreKeyAllowUnprotectedTxs, &p.AllowUnprotectedTxs, validateBool),
+		paramtypes.NewParamSetPair(KeyConverterContract, &p.ConverterParams.ConverterContract, validateString),
+		paramtypes.NewParamSetPair(KeyEventName, &p.ConverterParams.EventName, validateString),
+		paramtypes.NewParamSetPair(KeyEventTuple, &p.ConverterParams.EventTuple, validateString),
+		paramtypes.NewParamSetPair(KeyEventAbi, &p.ConverterParams.EventAbi, validateString),
+		paramtypes.NewParamSetPair(KeyConverterEnable, &p.ConverterParams.Enable, validateBool),
 	}
 }
 
@@ -182,4 +189,12 @@ func validateChainConfig(i interface{}) error {
 // IsLondon returns if london hardfork is enabled.
 func IsLondon(ethConfig *params.ChainConfig, height int64) bool {
 	return ethConfig.IsLondon(big.NewInt(height))
+}
+
+func validateString(i interface{}) error {
+	_, ok := i.(string)
+	if !ok {
+		return fmt.Errorf("invalid parameter type: %T", i)
+	}
+	return nil
 }

@@ -75,6 +75,16 @@ func DefaultChainConfig() ChainConfig {
 	}
 }
 
+func DefaultConverParams() ConverterParams {
+	return ConverterParams{
+		ConverterContract: "",
+		EventName: DefaultConverterEventName,
+		EventTuple: DefautConverterEventTuple,
+		EventAbi: DefautConverterEventAbi,
+		Enable: false,
+	}
+}
+
 func getBlockValue(block *sdk.Int) *big.Int {
 	if block == nil || block.IsNegative() {
 		return nil

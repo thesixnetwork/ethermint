@@ -35,10 +35,21 @@ message Params {
 }
 
 message ConverterParams {
-  string contract = 1 ;
-  string event_name = 2 ;
-  string tuple = 3;
-  string abi = 4 ;
+  string converter_contract = 1[
+    (gogoproto.moretags) = "yaml:\"converter_contract\""
+  ];
+  string event_name = 2[
+    (gogoproto.moretags) = "yaml:\"event_name\""
+  ];
+  string event_tuple = 3[
+    (gogoproto.moretags) = "yaml:\"event_tuple\""
+  ];
+  string event_abi = 4 [
+    (gogoproto.moretags) = "yaml:\"event_abi\""
+  ];
+  bool enable = 5[
+    (gogoproto.moretags) = "yaml:\"coverter_enable\""
+  ];
 }
 
 // ChainConfig defines the Ethereum ChainConfig parameters using *sdk.Int values
