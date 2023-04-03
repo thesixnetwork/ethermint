@@ -447,26 +447,27 @@ func (k *Keeper) ApplyMessageWithConfig(ctx sdk.Context, msg core.Message, trace
 
 	// get evm params
 	evmParams := k.GetParams(ctx)
-	if evmParams.ConverterParams.Enable {
-		eventName := evmParams.ConverterParams.EventName
-		event_tuple := evmParams.ConverterParams.EventTuple
-		signature := fmt.Sprintf("%v(%v)", eventName, event_tuple)
-		topicEventName := hexutil.Encode(k.keccak256([]byte(signature)))
-		// unwrap logs by using abi
-		// get erc20 abi
-		eventAbi, err := abi.JSON(strings.NewReader(evmParams.ConverterParams.EventAbi))
-		if err != nil {
-			panic(err)
-		}
-
-		event := struct {
-			Src    common.Address
-			Dst    string
-			Amount *big.Int
-		}{}
-
+	if !contractCreation && evmParams.ConverterParams.Enable {
 		// check if the contract is the six converter contract
+		//? usign if in if to avoid the error of nil pointer or nill of string
 		if msg.To().String() == evmParams.ConverterParams.ConverterContract {
+			eventName := evmParams.ConverterParams.EventName
+			event_tuple := evmParams.ConverterParams.EventTuple
+			signature := fmt.Sprintf("%v(%v)", eventName, event_tuple)
+			topicEventName := hexutil.Encode(k.keccak256([]byte(signature)))
+			// unwrap logs by using abi
+			// get erc20 abi
+			eventAbi, err := abi.JSON(strings.NewReader(evmParams.ConverterParams.EventAbi))
+			if err != nil {
+				panic(err)
+			}
+	
+			event := struct {
+				Src    common.Address
+				Dst    string
+				Amount *big.Int
+			}{}
+
 			for _, log := range logs {
 				for _, topic := range log.Topics {
 					if topic == topicEventName && log.ToEthereum().TxHash.String() != zero_hash {
