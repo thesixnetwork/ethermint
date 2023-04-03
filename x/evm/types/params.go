@@ -21,6 +21,35 @@ var (
 	DefaultMinGasMultiplier = sdk.NewDecWithPrec(50, 2)
 	// DefaultAllowUnprotectedTxs rejects all unprotected txs (i.e false)
 	DefaultAllowUnprotectedTxs = false
+
+	// Converter defines the default EVM denomination converter
+	DefaultConverterEventName = "TransferToCosmos"
+	DefautConverterEventTuple = "address,string,uint256"
+	DefautConverterEventAbi = `[{
+		"anonymous": false,
+		"inputs": [
+			{
+				"indexed": true,
+				"internalType": "address",
+				"name": "src",
+				"type": "address"
+			},
+			{
+				"indexed": false,
+				"internalType": "string",
+				"name": "dst",
+				"type": "string"
+			},
+			{
+				"indexed": false,
+				"internalType": "uint256",
+				"name": "amount",
+				"type": "uint256"
+			}
+		],
+		"name": "TransferToCosmos",
+		"type": "event"
+	}]`
 )
 
 // Parameter keys
@@ -66,6 +95,12 @@ func DefaultParams() Params {
 		ChainConfig:         DefaultChainConfig(),
 		ExtraEIPs:           nil,
 		AllowUnprotectedTxs: DefaultAllowUnprotectedTxs,
+		ConverterParams: ConverterParams{
+			Contract: "",
+			EventName: DefaultConverterEventName,
+			Tuple: DefautConverterEventTuple,
+			Abi: DefautConverterEventAbi,
+		},
 	}
 }
 

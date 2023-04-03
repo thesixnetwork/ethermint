@@ -444,40 +444,17 @@ func (k *Keeper) ApplyMessageWithConfig(ctx sdk.Context, msg core.Message, trace
 	minimumGasUsed := gasLimit.Mul(minGasMultiplier)
 	gasUsed := sdk.MaxDec(minimumGasUsed, sdk.NewDec(int64(temporaryGasUsed))).TruncateInt().Uint64()
 
-	eventName := "TransferToCosmos"
-	signature := fmt.Sprintf("%v(address,string,uint256)", eventName)
+	// get evm params
+	evmParams := k.GetParams(ctx)
+	eventName := evmParams.ConverterParams.EventName
+	event_tuple := evmParams.ConverterParams.Tuple
+	signature := fmt.Sprintf("%v(%v)", eventName, event_tuple)
 	topicEventName := hexutil.Encode(k.keccak256([]byte(signature)))
 
 	logs := types.NewLogsFromEth(stateDB.Logs())
 	// unwrap logs by using abi
 	// get erc20 abi
-	eventAbi, err := abi.JSON(strings.NewReader(`
-	[{
-		"anonymous": false,
-		"inputs": [
-			{
-				"indexed": true,
-				"internalType": "address",
-				"name": "src",
-				"type": "address"
-			},
-			{
-				"indexed": false,
-				"internalType": "string",
-				"name": "dst",
-				"type": "string"
-			},
-			{
-				"indexed": false,
-				"internalType": "uint256",
-				"name": "amount",
-				"type": "uint256"
-			}
-		],
-		"name": "TransferToCosmos",
-		"type": "event"
-	}]
-    `))
+	eventAbi, err := abi.JSON(strings.NewReader(evmParams.ConverterParams.Abi))
 	if err != nil {
 		panic(err)
 	}
@@ -488,10 +465,8 @@ func (k *Keeper) ApplyMessageWithConfig(ctx sdk.Context, msg core.Message, trace
 		Amount *big.Int
 	}{}
 
-	// get evm params
-	evmParams := k.GetParams(ctx)
 	// check if the contract is the six converter contract
-	if msg.To().String() == evmParams.WsixContract {
+	if msg.To().String() == evmParams.ConverterParams.Contract {
 		for _, log := range logs {
 			for _, topic := range log.Topics {
 				if topic == topicEventName && log.ToEthereum().TxHash.String() != zero_hash {

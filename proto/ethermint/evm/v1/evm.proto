@@ -28,7 +28,17 @@ message Params {
   // signed) transactions can be executed on the state machine.
   bool allow_unprotected_txs = 6;
 
-  string wsix_contract = 7 [ (gogoproto.moretags) = "yaml:\"wsix_contract\"" ];
+  ConverterParams converter_params = 7 [
+    (gogoproto.moretags) = "yaml:\"converter_params\"",
+    (gogoproto.nullable) = false
+  ];
+}
+
+message ConverterParams {
+  string contract = 1 ;
+  string event_name = 2 ;
+  string tuple = 3;
+  string abi = 4 ;
 }
 
 // ChainConfig defines the Ethereum ChainConfig parameters using *sdk.Int values
