@@ -101,6 +101,14 @@ var (
 
 	// ErrInvalidGasLimit returns an error if gas limit value is invalid
 	ErrInvalidGasLimit = sdkerrors.Register(ModuleName, codeErrInvalidGasLimit, "invalid gas limit")
+
+	ErrSendCoinsFromAccountToModule = sdkerrors.Register(ModuleName, 661, "failed to send coins from account to module")
+
+	ErrBurnCoinsFromModuleAccount = sdkerrors.Register(ModuleName, 662, "failed to burn coins")
+
+	ErrMintCoinsToModuleAccount = sdkerrors.Register(ModuleName, 663, "failed to mint coins")
+
+	ErrCoinInput = sdkerrors.Register(ModuleName, 664, "Reject coin input contain non zero amount after 12th decimal place")
 )
 
 // NewExecErrorWithReason unpacks the revert return bytes and returns a wrapped error

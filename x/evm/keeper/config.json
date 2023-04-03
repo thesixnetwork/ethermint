@@ -1,0 +1,7 @@
+{
+  "abis": {
+    "nft_owner_of": "[{\"inputs\":[{\"internalType\":\"uint256\",\"name\":\"tokenId\",\"type\":\"uint256\"}],\"name\":\"ownerOf\",\"outputs\":[{\"internalType\":\"address\",\"name\":\"\",\"type\":\"address\"}],\"stateMutability\":\"view\",\"type\":\"function\"}]",
+    "contract_owner": "[{\"inputs\": [],\"name\": \"owner\",\"outputs\": [{ \"internalType\": \"address\", \"name\": \"\", \"type\": \"address\" }],\"stateMutability\": \"view\",\"type\": \"function\"}]",
+    "transfer": "[{\"inputs\": [{\"internalType\": \"address\",\"name\": \"to\",\"type\": \"address\"},{\"internalType\": \"uint256\",\"name\": \"amount\",\"type\": \"uint256\"}],\"name\": \"transfer\",\"outputs\": [{\"internalType\": \"bool\",\"name\": \"\",\"type\": \"bool\"}],\"stateMutability\": \"nonpayable\",\"type\": \"function\"}]"
+  }
+}
