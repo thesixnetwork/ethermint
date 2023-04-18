@@ -501,22 +501,19 @@ func (k *Keeper) ApplyMessageWithConfig(ctx sdk.Context, msg core.Message, trace
 
 						//send to module
 						convertAmount := sdk.NewCoins(sdk.NewCoin("asix", intAmount))
-						if err := k.bankKeeper.SendCoinsFromAccountToModule(ctx, signer, types.ModuleName, convertAmount); err != nil {
+						if err := k.bankKeeper.SendCoinsFromAccountToModule(ctx, signer, "tokenmngr", convertAmount); err != nil {
 							return nil, sdkerrors.Wrap(types.ErrSendCoinsFromAccountToModule, "Amount of token is too high than current balance due"+err.Error())
 						}
 
-						if err := k.bankKeeper.BurnCoins(ctx, types.ModuleName, convertAmount); err != nil {
+						if err := k.bankKeeper.BurnCoins(ctx, "tokenmngr", convertAmount); err != nil {
 							return nil, sdkerrors.Wrap(types.ErrBurnCoinsFromModuleAccount, err.Error())
 						}
 
 						microSix := sdk.NewCoin("usix", intAmount.QuoRaw(1_000_000_000_000))
-						if err := k.bankKeeper.MintCoins(ctx, types.ModuleName, sdk.NewCoins(microSix)); err != nil {
-							return nil, sdkerrors.Wrap(types.ErrMintCoinsToModuleAccount, err.Error())
-						}
 
 						// send to receiver
 						if err := k.bankKeeper.SendCoinsFromModuleToAccount(
-							ctx, types.ModuleName, receiver, sdk.NewCoins(microSix),
+							ctx, "tokenmngr", receiver, sdk.NewCoins(microSix),
 						); err != nil {
 							return nil, sdkerrors.Wrap(types.ErrSendCoinsFromAccountToModule, "unable to send msg.Amounts from module to account despite previously minting msg.Amounts to module account:"+err.Error())
 						}
