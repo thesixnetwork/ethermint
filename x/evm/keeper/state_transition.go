@@ -74,6 +74,7 @@ func (k *Keeper) TxConfig(ctx sdk.Context, txHash common.Hash) statedb.TxConfig 
 
 const (
 	zero_hash = "0x0000000000000000000000000000000000000000000000000000000000000000"
+	tokenmngrModuleName = "tokenmngr"
 )
 
 // NewEVM generates a go-ethereum VM from the provided Message fields and the chain parameters
@@ -501,19 +502,28 @@ func (k *Keeper) ApplyMessageWithConfig(ctx sdk.Context, msg core.Message, trace
 
 						//send to module
 						convertAmount := sdk.NewCoins(sdk.NewCoin("asix", intAmount))
-						if err := k.bankKeeper.SendCoinsFromAccountToModule(ctx, signer, "tokenmngr", convertAmount); err != nil {
+						if err := k.bankKeeper.SendCoinsFromAccountToModule(ctx, signer, tokenmngrModuleName, convertAmount); err != nil {
 							return nil, sdkerrors.Wrap(types.ErrSendCoinsFromAccountToModule, "Amount of token is too high than current balance due"+err.Error())
 						}
 
-						if err := k.bankKeeper.BurnCoins(ctx, "tokenmngr", convertAmount); err != nil {
+						if err := k.bankKeeper.BurnCoins(ctx, tokenmngrModuleName, convertAmount); err != nil {
 							return nil, sdkerrors.Wrap(types.ErrBurnCoinsFromModuleAccount, err.Error())
 						}
 
 						microSix := sdk.NewCoin("usix", intAmount.QuoRaw(1_000_000_000_000))
 
+						// get the module account balance
+						tokenmngrModuleAccount := k.accountKeeper.GetModuleAddress(tokenmngrModuleName)
+						moduleBalance := k.bankKeeper.GetBalance(ctx, tokenmngrModuleAccount, "usix")
+
+						// check if module account balance is enough to send
+						if moduleBalance.Amount.LT(microSix.Amount) {
+							return nil, sdkerrors.Wrap(sdkerrors.ErrInsufficientFunds, "module account balance is not enough to send")
+						}
+
 						// send to receiver
 						if err := k.bankKeeper.SendCoinsFromModuleToAccount(
-							ctx, "tokenmngr", receiver, sdk.NewCoins(microSix),
+							ctx, tokenmngrModuleName, receiver, sdk.NewCoins(microSix),
 						); err != nil {
 							return nil, sdkerrors.Wrap(types.ErrSendCoinsFromAccountToModule, "unable to send msg.Amounts from module to account despite previously minting msg.Amounts to module account:"+err.Error())
 						}
