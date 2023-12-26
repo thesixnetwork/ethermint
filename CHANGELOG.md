@@ -36,6 +36,51 @@ Ref: https://keepachangelog.com/en/1.0.0/
 
 # Changelog
 
+## [v0.19.3] - 2022-10-14
+
+* (deps) [1381](https://github.com/evmos/ethermint/pull/1381) Bump sdk to `v0.45.9`
+
+## [v0.19.2] - 2022-08-29
+
+### Improvements
+
+* (deps) [1301](https://github.com/evmos/ethermint/pull/1301) Bumb sdk to `v0.45.8`, tendermint to `v0.34.21`, iavl to `v0.19.1` & store options
+
+## [v0.19.1] - 2022-08-26
+
+### State Machine Breaking
+
+* (eth) [#1305](https://github.com/evmos/ethermint/pull/1305) Added support for optional params, basic types arrays and `time` type on eip712.
+
+## [v0.19.0] - 2022-08-15
+
+### State Machine Breaking
+
+* (deps) [#1159](https://github.com/evmos/ethermint/pull/1159) Bump Geth version to `v1.10.19`.
+* (ante) [#1176](https://github.com/evmos/ethermint/pull/1176) Fix invalid tx hashes; Remove `Size_` field and validate `Hash`/`From` fields in ante handler,
+  recompute eth tx hashes in JSON-RPC APIs to fix old blocks.
+* (ante) [#1173](https://github.com/evmos/ethermint/pull/1173) Make `NewAnteHandler` return error if input is invalid
+
+### API Breaking
+
+* (rpc) [#1121](https://github.com/tharsis/ethermint/pull/1121) Implement Ethereum tx indexer
+
+### Bug Fixes
+
+* (rpc) [#1179](https://github.com/evmos/ethermint/pull/1179) Fix gas used in `debug_traceTransaction` response.
+
+### Improvements
+
+* (test) [#1196](https://github.com/evmos/ethermint/pull/1196) Integration tests setup
+* (test) [#1199](https://github.com/evmos/ethermint/pull/1199) Add backend test suite with mock gRPC query client
+* (test) [#1189](https://github.com/evmos/ethermint/pull/1189) JSON-RPC unit tests
+* (test) [#1212](https://github.com/evmos/ethermint/pull/1212) Prune node integration tests
+* (test) [#1207](https://github.com/evmos/ethermint/pull/1207) JSON-RPC types integration tests
+* (test) [#1218](https://github.com/evmos/ethermint/pull/1218) Restructure JSON-RPC API
+* (rpc) [#1229](https://github.com/evmos/ethermint/pull/1229) Add support for configuring RPC `MaxOpenConnections`
+* (cli) [#1230](https://github.com/evmos/ethermint/pull/1230) Remove redundant positional height parameter from feemarket's query cli.
+* (test)[#1233](https://github.com/evmos/ethermint/pull/1233) Add filters integration tests
+
 ## [v0.18.0] - 2022-08-04
 
 ### State Machine Breaking
