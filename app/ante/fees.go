@@ -37,7 +37,6 @@ func (mpd MinGasPriceDecorator) AnteHandle(ctx sdk.Context, tx sdk.Tx, simulate 
 		return next(ctx, tx, simulate)
 	}
 
-
 	// min_gas_price is in atto (1e-18) units, so we need to convert it to micro (1e-6) units
 	// to compare it to the fee amount in micro units
 	// minGasPrice * 1e12 = microMinGasPrice
@@ -63,7 +62,7 @@ func (mpd MinGasPriceDecorator) AnteHandle(ctx sdk.Context, tx sdk.Tx, simulate 
 	if feeCoins.Empty() {
 		// feeCoins will be 200000000000000000asix if the fee is not set
 		// this is the default value for the fee
-		feeCoins = sdk.NewCoins(sdk.NewCoin(evmParams.EvmDenom, sdk.NewInt(200000000000000000)),sdk.NewCoin("usix", sdk.NewInt(200000)))
+		feeCoins = sdk.NewCoins(sdk.NewCoin(evmParams.EvmDenom, sdk.NewInt(200000000000000000)), sdk.NewCoin("usix", sdk.NewInt(200000)))
 	}
 	gas := feeTx.GetGas()
 
@@ -102,10 +101,12 @@ func NewEthMinGasPriceDecorator(fk FeeMarketKeeper, ek EVMKeeper) EthMinGasPrice
 }
 
 func (empd EthMinGasPriceDecorator) AnteHandle(ctx sdk.Context, tx sdk.Tx, simulate bool, next sdk.AnteHandler) (newCtx sdk.Context, err error) {
-	minGasPrice := empd.feesKeeper.GetParams(ctx).MinGasPrice
+	// minGasPrice := empd.feesKeeper.GetParams(ctx).MinGasPrice
+	legacyminGasPrice := empd.feesKeeper.GetParams(ctx).LegacyMinGasPrice
+	// legacyminGasPrice := sdk.NewDec(20000000000.000000000000000000)
 
 	// short-circuit if min gas price is 0
-	if minGasPrice.IsZero() {
+	if legacyminGasPrice.IsZero() {
 		return next(ctx, tx, simulate)
 	}
 
@@ -145,7 +146,7 @@ func (empd EthMinGasPriceDecorator) AnteHandle(ctx sdk.Context, tx sdk.Tx, simul
 
 		gasLimit := sdk.NewDecFromBigInt(new(big.Int).SetUint64(ethMsg.GetGas()))
 
-		requiredFee := minGasPrice.Mul(gasLimit)
+		requiredFee := legacyminGasPrice.Mul(gasLimit)
 		fee := sdk.NewDecFromBigInt(feeAmt)
 
 		if fee.LT(requiredFee) {

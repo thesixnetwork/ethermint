@@ -19,13 +19,15 @@ var (
 	ParamStoreKeyEnableHeight             = []byte("EnableHeight")
 	ParamStoreKeyMinGasPrice              = []byte("MinGasPrice")
 	ParamStoreKeyMinGasMultiplier         = []byte("MinGasMultiplier")
+	ParamStoreKeyLegacyBaseFee            = []byte("LegacyBaseFee")
+	ParamStoreKeyLegacyMinGasPrice        = []byte("LegacyMinGasPrice")
 )
 
 var (
 	// DefaultMinGasMultiplier is 0.5 or 50%
 	DefaultMinGasMultiplier = sdk.NewDecWithPrec(50, 2)
 	// DefaultMinGasPrice is 0 (i.e disabled)
-	DefaultMinGasPrice = sdk.NewDecFromInt(sdk.NewIntFromUint64(5000000000000))
+	DefaultMinGasPrice = sdk.ZeroDec()
 )
 
 // ParamKeyTable returns the parameter key table.
@@ -42,6 +44,8 @@ func NewParams(
 	enableHeight int64,
 	minGasPrice sdk.Dec,
 	minGasPriceMultiplier sdk.Dec,
+	legacybaseFee uint64,
+	legacyminGasPrice sdk.Dec,
 ) Params {
 	return Params{
 		NoBaseFee:                noBaseFee,
@@ -51,6 +55,8 @@ func NewParams(
 		EnableHeight:             enableHeight,
 		MinGasPrice:              minGasPrice,
 		MinGasMultiplier:         minGasPriceMultiplier,
+		LegacyBaseFee:            sdk.NewIntFromUint64(legacybaseFee),
+		LegacyMinGasPrice:        legacyminGasPrice,
 	}
 }
 
@@ -60,10 +66,12 @@ func DefaultParams() Params {
 		NoBaseFee:                false,
 		BaseFeeChangeDenominator: params.BaseFeeChangeDenominator,
 		ElasticityMultiplier:     params.ElasticityMultiplier,
-		BaseFee:                  sdk.NewIntFromUint64(5000000000000),
+		BaseFee:                  sdk.NewIntFromUint64(params.InitialBaseFee),
 		EnableHeight:             0,
 		MinGasPrice:              DefaultMinGasPrice,
 		MinGasMultiplier:         DefaultMinGasMultiplier,
+		LegacyBaseFee:            sdk.NewIntFromUint64(params.InitialBaseFee),
+		LegacyMinGasPrice:        DefaultMinGasPrice,
 	}
 }
 
@@ -77,6 +85,8 @@ func (p *Params) ParamSetPairs() paramtypes.ParamSetPairs {
 		paramtypes.NewParamSetPair(ParamStoreKeyEnableHeight, &p.EnableHeight, validateEnableHeight),
 		paramtypes.NewParamSetPair(ParamStoreKeyMinGasPrice, &p.MinGasPrice, validateMinGasPrice),
 		paramtypes.NewParamSetPair(ParamStoreKeyMinGasMultiplier, &p.MinGasMultiplier, validateMinGasPrice),
+		paramtypes.NewParamSetPair(ParamStoreKeyLegacyBaseFee,&p.LegacyBaseFee, validateBaseFee),
+		paramtypes.NewParamSetPair(ParamStoreKeyLegacyMinGasPrice,&p.LegacyMinGasPrice, validateMinGasPrice),
 	}
 }
 

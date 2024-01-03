@@ -4,6 +4,7 @@ import (
 	sdk "github.com/cosmos/cosmos-sdk/types"
 
 	paramtypes "github.com/cosmos/cosmos-sdk/x/params/types"
+	"github.com/ethereum/go-ethereum/params"
 	v010types "github.com/evmos/ethermint/x/feemarket/migrations/v010/types"
 	"github.com/evmos/ethermint/x/feemarket/types"
 )
@@ -20,6 +21,10 @@ func MigrateStore(ctx sdk.Context, paramstore *paramtypes.Subspace) error {
 	paramstore.Set(ctx, types.ParamStoreKeyMinGasPrice, types.DefaultMinGasPrice)
 	// add MinGasMultiplier
 	paramstore.Set(ctx, types.ParamStoreKeyMinGasMultiplier, types.DefaultMinGasMultiplier)
+	// add LegacyMinGasPrice
+	paramstore.Set(ctx, types.ParamStoreKeyLegacyMinGasPrice, types.DefaultMinGasPrice)
+	// add LegacyBaseFee
+	paramstore.Set(ctx, types.ParamStoreKeyBaseFee, params.InitialBaseFee)
 	return nil
 }
 
@@ -37,6 +42,8 @@ func MigrateJSON(oldState v010types.GenesisState) types.GenesisState {
 			BaseFee:                  oldState.Params.BaseFee,
 			MinGasPrice:              types.DefaultMinGasPrice,
 			MinGasMultiplier:         types.DefaultMinGasMultiplier,
+			LegacyBaseFee:            sdk.NewInt(20000000000.000000000000000000),
+			LegacyMinGasPrice:        types.DefaultMinGasPrice,
 		},
 		BlockGas: oldState.BlockGas,
 	}
