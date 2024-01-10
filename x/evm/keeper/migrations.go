@@ -27,3 +27,7 @@ func (m Migrator) Migrate1to2(ctx sdk.Context) error {
 func (m Migrator) Migrate2to3(ctx sdk.Context) error {
 	return v3.MigrateStore(ctx, &m.keeper.paramSpace)
 }
+
+func (m Migrator) Migrate3toV(ctx sdk.Context) error {
+	return v3.MigrateStore(ctx, &m.keeper.paramSpace)
+}
