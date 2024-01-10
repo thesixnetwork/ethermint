@@ -132,6 +132,11 @@ func (am AppModule) RegisterServices(cfg module.Configurator) {
 	if err != nil {
 		panic(err)
 	}
+
+	err = cfg.RegisterMigration(types.ModuleName, 3, m.Migrate3toV4)
+	if err != nil {
+		panic(err)
+	}
 }
 
 // Route returns the message routing key for the evm module.
