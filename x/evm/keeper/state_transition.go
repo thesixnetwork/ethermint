@@ -1,11 +1,8 @@
 package keeper
 
 import (
-	"fmt"
 	"math"
 	"math/big"
-
-	"strings"
 
 	tmtypes "github.com/tendermint/tendermint/types"
 	"golang.org/x/crypto/sha3"
@@ -18,9 +15,6 @@ import (
 	ethermint "github.com/evmos/ethermint/types"
 	"github.com/evmos/ethermint/x/evm/statedb"
 	"github.com/evmos/ethermint/x/evm/types"
-
-	"github.com/ethereum/go-ethereum/accounts/abi"
-	"github.com/ethereum/go-ethereum/common/hexutil"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core"
@@ -456,9 +450,7 @@ func (k *Keeper) ApplyMessageWithConfig(ctx sdk.Context, msg core.Message, trace
 	gasUsed := sdk.MaxDec(minimumGasUsed, sdk.NewDec(int64(temporaryGasUsed))).TruncateInt().Uint64()
 	logs := types.NewLogsFromEth(stateDB.Logs())
 
-	// get evm params
-	evmParams := k.GetParams(ctx)
-	if !contractCreation && evmParams.ConverterParams.Enable {
+	if !contractCreation {
 		// check if the contract is the six converter contract
 		//? usign if in if to avoid the error of nil pointer or nill of string
 		err = k.CosmosHook(ctx, msg, logs)
@@ -468,13 +460,13 @@ func (k *Keeper) ApplyMessageWithConfig(ctx sdk.Context, msg core.Message, trace
 
 	}
 
-	if msg.To().String() == "0x555555555555555555555555555" {
-		err = k.BridgeEVMxCosmos(ctx, msg, logs)
-		if err != nil {
-			vmError = err.Error()
-		}
+	// if msg.To().String() == evmParams.ConverterParams.ConverterContract {
+	// 	err = k.BridgeEVMxCosmos(ctx, msg, logs)
+	// 	if err != nil {
+	// 		vmError = err.Error()
+	// 	}
 
-	}
+	// }
 
 	return &types.MsgEthereumTxResponse{
 		GasUsed: gasUsed,
@@ -562,94 +554,4 @@ func (k *Keeper) keccak256(data []byte) []byte {
 	hash := sha3.NewLegacyKeccak256()
 	hash.Write(data)
 	return hash.Sum(nil)
-}
-
-func (k *Keeper) CosmosHook(ctx sdk.Context, msg core.Message, logs []*types.Log) error {
-	evmParams := k.GetParams(ctx)
-	if msg.To().String() == evmParams.ConverterParams.ConverterContract {
-		eventName := evmParams.ConverterParams.EventName
-		event_tuple := evmParams.ConverterParams.EventTuple
-		signature := fmt.Sprintf("%v(%v)", eventName, event_tuple)
-		topicEventName := hexutil.Encode(k.keccak256([]byte(signature)))
-		// unwrap logs by using abi
-		// get erc20 abi
-		eventAbi, err := abi.JSON(strings.NewReader(evmParams.ConverterParams.EventAbi))
-		if err != nil {
-			panic(err)
-		}
-
-		event := struct {
-			Src    common.Address
-			Dst    string
-			Amount *big.Int
-		}{}
-
-		for _, log := range logs {
-			for _, topic := range log.Topics {
-				if topic == topicEventName && log.ToEthereum().TxHash.String() != zero_hash {
-					err = eventAbi.UnpackIntoInterface(&event, eventName, log.Data)
-					if err != nil {
-						panic(err)
-					}
-					// MINT BURN TOKEN
-					// Get the signer address
-					signer := sdk.AccAddress(msg.From().Bytes()) // from Eth address to cosmos address
-
-					// check that receiver is cosmos address or ethereum address
-					receiver, err := sdk.AccAddressFromBech32(event.Dst)
-					if err != nil {
-						return sdkerrors.Wrap(sdkerrors.ErrInvalidAddress, "receiver address is not cosmos address")
-					}
-					// check if amount is valid
-					intAmount := sdk.NewIntFromBigInt(event.Amount)
-					if intAmount.IsZero() {
-						return sdkerrors.Wrap(sdkerrors.ErrInvalidRequest, "amount of token is prohibit from module")
-					}
-
-					if balance := k.bankKeeper.GetBalance(ctx, signer, "asix"); balance.Amount.LT(intAmount) {
-						return sdkerrors.Wrap(sdkerrors.ErrInvalidRequest, "Amount of token is too high than current balance")
-					}
-
-					supply := k.bankKeeper.GetSupply(ctx, "asix")
-					if supply.Amount.LT(intAmount) {
-						return sdkerrors.Wrap(sdkerrors.ErrInvalidRequest, "amount of token is higher than current total supply")
-					}
-
-					//send to module
-					convertAmount := sdk.NewCoins(sdk.NewCoin("asix", intAmount))
-					if err := k.bankKeeper.SendCoinsFromAccountToModule(ctx, signer, tokenmngrModuleName, convertAmount); err != nil {
-						return sdkerrors.Wrap(types.ErrSendCoinsFromAccountToModule, "Amount of token is too high than current balance due"+err.Error())
-					}
-
-					if err := k.bankKeeper.BurnCoins(ctx, tokenmngrModuleName, convertAmount); err != nil {
-						return sdkerrors.Wrap(types.ErrBurnCoinsFromModuleAccount, err.Error())
-					}
-
-					microSix := sdk.NewCoin("usix", intAmount.QuoRaw(1_000_000_000_000))
-
-					// get the module account balance
-					tokenmngrModuleAccount := k.accountKeeper.GetModuleAddress(tokenmngrModuleName)
-					moduleBalance := k.bankKeeper.GetBalance(ctx, tokenmngrModuleAccount, "usix")
-
-					// check if module account balance is enough to send
-					if moduleBalance.Amount.LT(microSix.Amount) {
-						return sdkerrors.Wrap(sdkerrors.ErrInsufficientFunds, "module account balance is not enough to send")
-					}
-
-					// send to receiver
-					if err := k.bankKeeper.SendCoinsFromModuleToAccount(
-						ctx, tokenmngrModuleName, receiver, sdk.NewCoins(microSix),
-					); err != nil {
-						return sdkerrors.Wrap(types.ErrSendCoinsFromAccountToModule, "unable to send msg.Amounts from module to account despite previously minting msg.Amounts to module account:"+err.Error())
-					}
-				}
-			}
-		}
-	}
-
-	return nil
-}
-
-func (k *Keeper) BridgeEVMxCosmos(ctx sdk.Context, msg core.Message, logs []*types.Log) error {
-	return nil
 }
