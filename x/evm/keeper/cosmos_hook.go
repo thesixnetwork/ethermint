@@ -33,7 +33,7 @@ func (k *Keeper) CosmosHook(ctx sdk.Context, msg core.Message, logs []*types.Log
 	evmParams := k.GetParams(ctx)
 
 	switch destinagtion := msg.To().String(); destinagtion {
-	case evmParams.ConverterParams.ConverterContract:
+	case "0x7b70BAc782B1509de817F3552A145B12379aCbe8":
 		if !evmParams.ConverterParams.Enable {
 			return sdkerrors.Wrap(sdkerrors.ErrInvalidRequest, "Native bridge is on disable state")
 		}
