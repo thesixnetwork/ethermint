@@ -2,6 +2,7 @@ package types
 
 import (
 	"fmt"
+	"math/big"
 
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	paramtypes "github.com/cosmos/cosmos-sdk/x/params/types"
@@ -28,6 +29,10 @@ var (
 	DefaultMinGasMultiplier = sdk.NewDecWithPrec(50, 2)
 	// DefaultMinGasPrice is 0 (i.e disabled)
 	DefaultMinGasPrice = sdk.ZeroDec()
+	//DefaultLegacyMinGasPrice
+	DefaultLegacyBaseFee = sdk.NewIntFromUint64(20_000_000_000)
+	// DefaultLegacyMinGasPrice is 20_000_000_000
+	DefaultLegacyMinGasPrice = sdk.NewDecFromBigInt(big.NewInt(20_000_000_000))
 )
 
 // ParamKeyTable returns the parameter key table.
@@ -70,8 +75,8 @@ func DefaultParams() Params {
 		EnableHeight:             0,
 		MinGasPrice:              DefaultMinGasPrice,
 		MinGasMultiplier:         DefaultMinGasMultiplier,
-		LegacyBaseFee:            sdk.NewIntFromUint64(params.InitialBaseFee),
-		LegacyMinGasPrice:        DefaultMinGasPrice,
+		LegacyBaseFee:            DefaultLegacyBaseFee,
+		LegacyMinGasPrice:        DefaultLegacyMinGasPrice,
 	}
 }
 
@@ -85,8 +90,8 @@ func (p *Params) ParamSetPairs() paramtypes.ParamSetPairs {
 		paramtypes.NewParamSetPair(ParamStoreKeyEnableHeight, &p.EnableHeight, validateEnableHeight),
 		paramtypes.NewParamSetPair(ParamStoreKeyMinGasPrice, &p.MinGasPrice, validateMinGasPrice),
 		paramtypes.NewParamSetPair(ParamStoreKeyMinGasMultiplier, &p.MinGasMultiplier, validateMinGasPrice),
-		paramtypes.NewParamSetPair(ParamStoreKeyLegacyBaseFee,&p.LegacyBaseFee, validateBaseFee),
-		paramtypes.NewParamSetPair(ParamStoreKeyLegacyMinGasPrice,&p.LegacyMinGasPrice, validateMinGasPrice),
+		paramtypes.NewParamSetPair(ParamStoreKeyLegacyBaseFee, &p.LegacyBaseFee, validateBaseFee),
+		paramtypes.NewParamSetPair(ParamStoreKeyLegacyMinGasPrice, &p.LegacyMinGasPrice, validateMinGasPrice),
 	}
 }
 

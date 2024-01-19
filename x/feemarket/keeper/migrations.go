@@ -5,6 +5,7 @@ import (
 
 	v010 "github.com/evmos/ethermint/x/feemarket/migrations/v010"
 	v011 "github.com/evmos/ethermint/x/feemarket/migrations/v011"
+	v012 "github.com/evmos/ethermint/x/feemarket/migrations/v012"
 )
 
 // Migrator is a struct for handling in-place store migrations.
@@ -27,4 +28,9 @@ func (m Migrator) Migrate1to2(ctx sdk.Context) error {
 // Migrate2to3 migrates the store from consensus version v2 to v3
 func (m Migrator) Migrate2to3(ctx sdk.Context) error {
 	return v011.MigrateStore(ctx, &m.keeper.paramSpace)
+}
+
+// Migrate3to4 migrates the store from consensus version v2 to v3
+func (m Migrator) Migrate3to4(ctx sdk.Context) error {
+	return v012.MigrateStore(ctx, &m.keeper.paramSpace)
 }
