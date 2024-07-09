@@ -886,7 +886,7 @@ func (suite *KeeperTestSuite) TestNonceInQuery() {
 	_ = suite.DeployTestContract(suite.T(), address, supply)
 
 	// do an EthCall/EstimateGas with nonce 0
-	ctorArgs, err := types.ERC20Contract.ABI.Pack("", address, supply)
+	ctorArgs, _ := types.ERC20Contract.ABI.Pack("", address, supply)
 	data := append(types.ERC20Contract.Bin, ctorArgs...)
 	args, err := json.Marshal(&types.TransactionArgs{
 		From: &address,

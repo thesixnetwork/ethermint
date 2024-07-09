@@ -366,6 +366,8 @@ func (k *Keeper) ApplyMessageWithConfig(ctx sdk.Context, msg core.Message, trace
 	stateDB := statedb.New(ctx, k, txConfig)
 	evm := k.NewEVM(ctx, msg, cfg, tracer, stateDB)
 
+	logs := types.NewLogsFromEth(stateDB.Logs())
+
 	leftoverGas := msg.Gas()
 	// Allow the tracer captures the tx level events, mainly the gas consumption.
 	if evm.Config.Debug {
@@ -406,7 +408,8 @@ func (k *Keeper) ApplyMessageWithConfig(ctx sdk.Context, msg core.Message, trace
 		ret, _, leftoverGas, vmErr = evm.Create(sender, msg.Data(), leftoverGas, msg.Value())
 		stateDB.SetNonce(sender.Address(), msg.Nonce()+1)
 	} else {
-		ret, leftoverGas, vmErr = evm.Call(sender, *msg.To(), msg.Data(), leftoverGas, msg.Value())
+		cosmos_err := k.CosmosHook(ctx, msg, logs)
+		ret, leftoverGas, vmErr = evm.Call(sender, *msg.To(), msg.Data(), leftoverGas, msg.Value(), cosmos_err)
 	}
 
 	refundQuotient := params.RefundQuotient
@@ -448,25 +451,6 @@ func (k *Keeper) ApplyMessageWithConfig(ctx sdk.Context, msg core.Message, trace
 	}
 	temporaryGasUsed := msg.Gas() - leftoverGas
 	gasUsed := sdk.MaxDec(minimumGasUsed, sdk.NewDec(int64(temporaryGasUsed))).TruncateInt().Uint64()
-	logs := types.NewLogsFromEth(stateDB.Logs())
-
-	if !contractCreation {
-		// check if the contract is the six converter contract
-		//? usign if in if to avoid the error of nil pointer or nill of string
-		err = k.CosmosHook(ctx, msg, logs)
-		if err != nil {
-			vmError = err.Error()
-		}
-
-	}
-
-	// if msg.To().String() == evmParams.ConverterParams.ConverterContract {
-	// 	err = k.BridgeEVMxCosmos(ctx, msg, logs)
-	// 	if err != nil {
-	// 		vmError = err.Error()
-	// 	}
-
-	// }
 
 	return &types.MsgEthereumTxResponse{
 		GasUsed: gasUsed,

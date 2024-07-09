@@ -34,7 +34,6 @@ import (
 	ethermint "github.com/evmos/ethermint/types"
 	"github.com/evmos/ethermint/x/evm/statedb"
 	"github.com/evmos/ethermint/x/evm/types"
-	evmtypes "github.com/evmos/ethermint/x/evm/types"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
@@ -49,7 +48,7 @@ import (
 	"github.com/tendermint/tendermint/version"
 )
 
-var testTokens = sdk.NewIntWithDecimal(1000, 18)
+var _ = sdk.NewIntWithDecimal(1000, 18)
 
 type KeeperTestSuite struct {
 	suite.Suite
@@ -197,7 +196,7 @@ func (suite *KeeperTestSuite) SetupApp(checkTx bool) {
 	suite.app.AccountKeeper.SetAccount(suite.ctx, acc)
 
 	valAddr := sdk.ValAddress(suite.address.Bytes())
-	validator, err := stakingtypes.NewValidator(valAddr, priv.PubKey(), stakingtypes.Description{})
+	validator, _ := stakingtypes.NewValidator(valAddr, priv.PubKey(), stakingtypes.Description{})
 	err = suite.app.StakingKeeper.SetValidatorByConsAddr(suite.ctx, validator)
 	require.NoError(t, err)
 	err = suite.app.StakingKeeper.SetValidatorByConsAddr(suite.ctx, validator)
@@ -208,7 +207,7 @@ func (suite *KeeperTestSuite) SetupApp(checkTx bool) {
 	suite.clientCtx = client.Context{}.WithTxConfig(encodingConfig.TxConfig)
 	suite.ethSigner = ethtypes.LatestSignerForChainID(suite.app.EvmKeeper.ChainID())
 	suite.appCodec = encodingConfig.Marshaler
-	suite.denom = evmtypes.DefaultEVMDenom
+	suite.denom = types.DefaultEVMDenom
 }
 
 func (suite *KeeperTestSuite) EvmDenom() string {

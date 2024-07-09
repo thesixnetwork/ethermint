@@ -33,13 +33,13 @@ func (k *Keeper) CosmosHook(ctx sdk.Context, msg core.Message, logs []*types.Log
 	evmParams := k.GetParams(ctx)
 
 	switch destinagtion := msg.To().String(); destinagtion {
-	case "0x7b70BAc782B1509de817F3552A145B12379aCbe8":
+	case evmParams.ConverterParams.ConverterContract:
 		if !evmParams.ConverterParams.Enable {
 			return sdkerrors.Wrap(sdkerrors.ErrInvalidRequest, "Native bridge is on disable state")
 		}
-		err := k.BridgeEVMxCosmos(ctx, msg, logs, evmParams.ConverterParams.EventName, evmParams.ConverterParams.EventAbi)
+		err := k.BridgeEVMxCosmos(ctx, msg, logs)
 		if err != nil {
-			return err
+			return sdkerrors.Wrap(sdkerrors.ErrInvalidRequest, "Native bridge is on disable state")
 		}
 	default:
 		return nil
@@ -48,8 +48,10 @@ func (k *Keeper) CosmosHook(ctx sdk.Context, msg core.Message, logs []*types.Log
 	return nil
 }
 
-func (k *Keeper) BridgeEVMxCosmos(ctx sdk.Context, msg core.Message, logs []*types.Log, eventName, eventAbiString string) error {
+func (k *Keeper) BridgeEVMxCosmos(ctx sdk.Context, msg core.Message, logs []*types.Log) error {
 	evmParams := k.GetParams(ctx)
+	eventName := evmParams.ConverterParams.EventName
+	eventAbiString := evmParams.ConverterParams.EventAbi
 
 	// ------------------------------------
 	// |                                  |
@@ -57,13 +59,13 @@ func (k *Keeper) BridgeEVMxCosmos(ctx sdk.Context, msg core.Message, logs []*typ
 	// |                                  |
 	// ------------------------------------
 
-	eventName = evmParams.ConverterParams.EventName
+	// eventName = evmParams.ConverterParams.EventName
 	event_tuple := evmParams.ConverterParams.EventTuple
 	signature := fmt.Sprintf("%v(%v)", eventName, event_tuple)
 	topicEventName := hexutil.Encode(k.keccak256([]byte(signature)))
 	// unwrap logs by using abi
 	// get erc20 abi
-	eventAbi, err := abi.JSON(strings.NewReader(evmParams.ConverterParams.EventAbi))
+	eventAbi, err := abi.JSON(strings.NewReader(eventAbiString))
 	if err != nil {
 		panic(err)
 	}
