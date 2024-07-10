@@ -450,16 +450,6 @@ func (k *Keeper) ApplyMessageWithConfig(ctx sdk.Context, msg core.Message, trace
 	gasUsed := sdk.MaxDec(minimumGasUsed, sdk.NewDec(int64(temporaryGasUsed))).TruncateInt().Uint64()
 	logs := types.NewLogsFromEth(stateDB.Logs())
 
-	if !contractCreation {
-		// check if the contract is the six converter contract
-		//? usign if in if to avoid the error of nil pointer or nill of string
-		err = k.CosmosHook(ctx, msg, logs)
-		if err != nil {
-			vmError = err.Error()
-		}
-
-	}
-
 	// if msg.To().String() == evmParams.ConverterParams.ConverterContract {
 	// 	err = k.BridgeEVMxCosmos(ctx, msg, logs)
 	// 	if err != nil {

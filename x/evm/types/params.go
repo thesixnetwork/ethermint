@@ -82,14 +82,13 @@ func ParamKeyTable() paramtypes.KeyTable {
 }
 
 // NewParams creates a new Params instance
-func NewParams(evmDenom string, enableCreate, enableCall bool, config ChainConfig, converter ConverterParams ,extraEIPs ...int64) Params {
+func NewParams(evmDenom string, enableCreate, enableCall bool, config ChainConfig,extraEIPs ...int64) Params {
 	return Params{
 		EvmDenom:     evmDenom,
 		EnableCreate: enableCreate,
 		EnableCall:   enableCall,
 		ExtraEIPs:    extraEIPs,
 		ChainConfig:  config,
-		ConverterParams: converter,
 	}
 }
 
@@ -115,11 +114,6 @@ func (p *Params) ParamSetPairs() paramtypes.ParamSetPairs {
 		paramtypes.NewParamSetPair(ParamStoreKeyExtraEIPs, &p.ExtraEIPs, validateEIPs),
 		paramtypes.NewParamSetPair(ParamStoreKeyChainConfig, &p.ChainConfig, validateChainConfig),
 		paramtypes.NewParamSetPair(ParamStoreKeyAllowUnprotectedTxs, &p.AllowUnprotectedTxs, validateBool),
-		paramtypes.NewParamSetPair(KeyConverterContract, &p.ConverterParams.ConverterContract, validateString),
-		paramtypes.NewParamSetPair(KeyEventName, &p.ConverterParams.EventName, validateString),
-		paramtypes.NewParamSetPair(KeyEventTuple, &p.ConverterParams.EventTuple, validateString),
-		paramtypes.NewParamSetPair(KeyEventAbi, &p.ConverterParams.EventAbi, validateString),
-		paramtypes.NewParamSetPair(KeyConverterEnable, &p.ConverterParams.Enable, validateBool),
 	}
 }
 
