@@ -19,7 +19,7 @@ const (
 	PrecompileAddress string = "0x0000000000000000000000000000000000000804"
 
 	// GasBalanceOf defines the gas cost for a single ERC-20 balanceOf query
-	GasBalanceOf = 2_851
+	GasBalanceOf = 0
 
 	// GasTotalSupply defines the gas cost for a single ERC-20 totalSupply query
 	GasTotalSupply = 2_477
