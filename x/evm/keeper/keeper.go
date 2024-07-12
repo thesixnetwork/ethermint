@@ -308,6 +308,12 @@ func (k Keeper) GetBaseFee(ctx sdk.Context, ethCfg *params.ChainConfig) *big.Int
 	return baseFee
 }
 
+func (k *Keeper) GetBaseDenom(ctx sdk.Context) string {
+	// params
+	params := k.GetParams(ctx)
+
+	return params.GetEvmDenom()
+}
 
 func (k Keeper) GetLegacyBaseFee(ctx sdk.Context, ethCfg *params.ChainConfig) *big.Int {
 	if !types.IsLondon(ethCfg, ctx.BlockHeight()) {
