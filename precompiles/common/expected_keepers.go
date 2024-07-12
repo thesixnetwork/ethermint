@@ -3,7 +3,7 @@ package common
 import (
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	banktypes "github.com/cosmos/cosmos-sdk/x/bank/types"
-	"github.com/ethereum/go-ethereum/common"
+	// "github.com/ethereum/go-ethereum/common"
 )
 
 type BankKeeper interface {
@@ -15,7 +15,7 @@ type BankKeeper interface {
 }
 
 type EVMKeeper interface {
-	GetCodeHash(sdk.Context, common.Address) common.Hash
-	GetBaseDenom(ctx sdk.Context) string
+	// GetCodeHash(sdk.Context, common.Address) common.Hash
+	// GetBaseDenom(ctx sdk.Context) string
 }
 
