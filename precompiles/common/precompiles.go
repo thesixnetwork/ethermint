@@ -10,6 +10,7 @@ import (
 	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/vm"
+	"github.com/evmos/ethermint/x/evm/statedb"
 )
 
 const UnknownMethodCallGas uint64 = 3000
@@ -70,10 +71,18 @@ func (p Precompile) Run(evm *vm.EVM, caller common.Address, callingContract comm
 
 
 func (p Precompile) Prepare(evm *vm.EVM, input []byte) (sdk.Context, *abi.Method, []interface{}, error) {
-	ctxer, ok := evm.StateDB.(Contexter)
+	stateDB, ok := evm.StateDB.(*statedb.StateDB)
+
 	if !ok {
-		return sdk.Context{}, nil, nil, errors.New("cannot get context from EVM")
+		return sdk.Context{}, nil, nil, errors.New("not run in EVM")
 	}
+
+	ctx := stateDB.GetContext()
+
+	// ctxer, ok := evm.StateDB.(Contexter)
+	// if !ok {
+	// 	return sdk.Context{}, nil, nil, errors.New("cannot get context from EVM")
+	// }
 	methodID, err := ExtractMethodID(input)
 	if err != nil {
 		return sdk.Context{}, nil, nil, err
@@ -89,7 +98,7 @@ func (p Precompile) Prepare(evm *vm.EVM, input []byte) (sdk.Context, *abi.Method
 		return sdk.Context{}, nil, nil, err
 	}
 
-	return ctxer.Ctx(), method, args, nil
+	return ctx, method, args, nil
 }
 
 func (p Precompile) GetABI() abi.ABI {
