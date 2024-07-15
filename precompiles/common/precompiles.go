@@ -15,10 +15,6 @@ import (
 
 const UnknownMethodCallGas uint64 = 3000
 
-type Contexter interface {
-	Ctx() sdk.Context
-}
-
 type PrecompileExecutor interface {
 	RequiredGas([]byte, *abi.Method) uint64
 	Execute(ctx sdk.Context, method *abi.Method, caller common.Address, callingContract common.Address, args []interface{}, value *big.Int, readOnly bool, evm *vm.EVM) ([]byte, error)
