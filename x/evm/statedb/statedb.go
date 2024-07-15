@@ -1,3 +1,5 @@
+// Copyright Tharsis Labs Ltd.(Evmos)
+// SPDX-License-Identifier:ENCL-1.0(https://github.com/evmos/evmos/blob/main/LICENSE)
 package statedb
 
 import (
@@ -5,8 +7,8 @@ import (
 	"math/big"
 	"sort"
 
-	sdk "github.com/cosmos/cosmos-sdk/types"
 	sdkerrors "github.com/cosmos/cosmos-sdk/types/errors"
+	sdk "github.com/cosmos/cosmos-sdk/types"
 	"github.com/ethereum/go-ethereum/common"
 	ethtypes "github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/core/vm"
@@ -68,6 +70,11 @@ func New(ctx sdk.Context, keeper Keeper, txConfig TxConfig) *StateDB {
 // Keeper returns the underlying `Keeper`
 func (s *StateDB) Keeper() Keeper {
 	return s.keeper
+}
+
+// GetContext returns the transaction Context.
+func (s *StateDB) GetContext() sdk.Context {
+	return s.ctx
 }
 
 // AddLog adds a log, called by evm.
@@ -197,7 +204,7 @@ func (s *StateDB) HasSuicided(addr common.Address) bool {
 // AddPreimage performs a no-op since the EnablePreimageRecording flag is disabled
 // on the vm.Config during state transitions. No store trie preimages are written
 // to the database.
-func (s *StateDB) AddPreimage(hash common.Hash, preimage []byte) {}
+func (s *StateDB) AddPreimage(_ common.Hash, _ []byte) {}
 
 // getStateObject retrieves a state object given by the address, returning nil if
 // the object is not found.
@@ -429,7 +436,7 @@ func (s *StateDB) RevertToSnapshot(revid int) {
 	snapshot := s.validRevisions[idx].journalIndex
 
 	// Replay the journal to undo changes and remove invalidated snapshots
-	s.journal.revert(s, snapshot)
+	s.journal.Revert(s, snapshot)
 	s.validRevisions = s.validRevisions[:idx]
 }
 
@@ -450,12 +457,21 @@ func (s *StateDB) Commit() error {
 				return sdkerrors.Wrap(err, "failed to set account")
 			}
 			for _, key := range obj.dirtyStorage.SortedKeys() {
-				value := obj.dirtyStorage[key]
+				dirtyValue := obj.dirtyStorage[key]
+				originValue := obj.originStorage[key]
 				// Skip noop changes, persist actual changes
-				if value == obj.originStorage[key] {
+				transientStorageValue, ok := obj.transientStorage[key]
+				if (ok && transientStorageValue == dirtyValue) ||
+					(!ok && dirtyValue == originValue) {
 					continue
 				}
-				s.keeper.SetState(s.ctx, obj.Address(), key, value.Bytes())
+				s.keeper.SetState(s.ctx, obj.Address(), key, dirtyValue.Bytes())
+
+				// Update the pendingStorage cache to the new value.
+				// This is specially needed for precompiles calls where
+				// multiple Commits calls are done within the same transaction
+				// for the appropriate changes to be committed.
+				obj.transientStorage[key] = dirtyValue
 			}
 		}
 	}

@@ -1,3 +1,5 @@
+// Copyright Tharsis Labs Ltd.(Evmos)
+// SPDX-License-Identifier:ENCL-1.0(https://github.com/evmos/evmos/blob/main/LICENSE)
 package statedb
 
 import (
@@ -37,11 +39,9 @@ type Storage map[common.Hash]common.Hash
 
 // SortedKeys sort the keys for deterministic iteration
 func (s Storage) SortedKeys() []common.Hash {
-	keys := make([]common.Hash, len(s))
-	i := 0
+	keys := make([]common.Hash, 0, len(s))
 	for k := range s {
-		keys[i] = k
-		i++
+		keys = append(keys, k)
 	}
 	sort.Slice(keys, func(i, j int) bool {
 		return bytes.Compare(keys[i].Bytes(), keys[j].Bytes()) < 0
@@ -60,6 +60,10 @@ type stateObject struct {
 	originStorage Storage
 	dirtyStorage  Storage
 
+	// transientStorage is an in memory storage of the latest committed entries in the current transaction execution.
+	// It is only used when multiple commits are made within the same transaction execution.
+	transientStorage Storage
+
 	address common.Address
 
 	// flags
@@ -76,11 +80,12 @@ func newObject(db *StateDB, address common.Address, account Account) *stateObjec
 		account.CodeHash = emptyCodeHash
 	}
 	return &stateObject{
-		db:            db,
-		address:       address,
-		account:       account,
-		originStorage: make(Storage),
-		dirtyStorage:  make(Storage),
+		db:               db,
+		address:          address,
+		account:          account,
+		originStorage:    make(Storage),
+		dirtyStorage:     make(Storage),
+		transientStorage: make(Storage),
 	}
 }
 
