@@ -5,7 +5,6 @@ import (
 	"math/big"
 
 	tmtypes "github.com/tendermint/tendermint/types"
-	"golang.org/x/crypto/sha3"
 
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	sdkerrors "github.com/cosmos/cosmos-sdk/types/errors"
@@ -65,14 +64,6 @@ func (k *Keeper) TxConfig(ctx sdk.Context, txHash common.Hash) statedb.TxConfig 
 		uint(k.GetLogSizeTransient(ctx)),     // LogIndex
 	)
 }
-
-const (
-	zero_hash           = "0x0000000000000000000000000000000000000000000000000000000000000000"
-	tokenmngrModuleName = "tokenmngr"
-	converterABI        = "[{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"internalType\":\"address\",\"name\":\"src\",\"type\":\"address\"},{\"indexed\":false,\"internalType\":\"string\",\"name\":\"dst\",\"type\":\"string\"},{\"indexed\":false,\"internalType\":\"uint256\",\"name\":\"amount\",\"type\":\"uint256\"}],\"name\":\"TransferToCosmos\",\"type\":\"event\"}]"
-	event_name          = "TransferToCosmos"
-	event_params        = "address,string,uint256"
-)
 
 // NewEVM generates a go-ethereum VM from the provided Message fields and the chain parameters
 // (ChainConfig and module Params). It additionally sets the validator operator address as the
@@ -448,31 +439,14 @@ func (k *Keeper) ApplyMessageWithConfig(ctx sdk.Context, msg core.Message, trace
 	}
 	temporaryGasUsed := msg.Gas() - leftoverGas
 	gasUsed := sdk.MaxDec(minimumGasUsed, sdk.NewDec(int64(temporaryGasUsed))).TruncateInt().Uint64()
-	logs := types.NewLogsFromEth(stateDB.Logs())
-
-	if !contractCreation {
-		// check if the contract is the six converter contract
-		//? usign if in if to avoid the error of nil pointer or nill of string
-		err = k.CosmosHook(ctx, msg, logs)
-		if err != nil {
-			vmError = err.Error()
-		}
-
-	}
-
-	// if msg.To().String() == evmParams.ConverterParams.ConverterContract {
-	// 	err = k.BridgeEVMxCosmos(ctx, msg, logs)
-	// 	if err != nil {
-	// 		vmError = err.Error()
-	// 	}
-
-	// }
+	// reset leftoverGas, to be used by the tracer
+	leftoverGas = msg.Gas() - gasUsed
 
 	return &types.MsgEthereumTxResponse{
 		GasUsed: gasUsed,
 		VmError: vmError,
 		Ret:     ret,
-		Logs:    logs,
+		Logs:    types.NewLogsFromEth(stateDB.Logs()),
 		Hash:    txConfig.TxHash.Hex(),
 	}, nil
 }
@@ -548,10 +522,4 @@ func (k Keeper) GetCoinbaseAddress(ctx sdk.Context) (common.Address, error) {
 
 	coinbase := common.BytesToAddress(validator.GetOperator())
 	return coinbase, nil
-}
-
-func (k *Keeper) keccak256(data []byte) []byte {
-	hash := sha3.NewLegacyKeccak256()
-	hash.Write(data)
-	return hash.Sum(nil)
 }

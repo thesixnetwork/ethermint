@@ -25,7 +25,7 @@ type EVMKeeper interface {
 		ctx sdk.Context, msgEthTx evmtypes.MsgEthereumTx, txData evmtypes.TxData, denom string, homestead, istanbul, london bool,
 	) (sdk.Coins, error)
 	GetBaseFee(ctx sdk.Context, ethCfg *params.ChainConfig) *big.Int
-	GetLegacyBaseFee(ctx sdk.Context, ethCfg *params.ChainConfig) *big.Int
+	// GetLegacyBaseFee(ctx sdk.Context, ethCfg *params.ChainConfig) *big.Int
 	GetBalance(ctx sdk.Context, addr common.Address) *big.Int
 	ResetTransientGasUsed(ctx sdk.Context)
 	GetTxIndexTransient(ctx sdk.Context) uint64
