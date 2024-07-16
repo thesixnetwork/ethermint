@@ -37,33 +37,15 @@ func (mpd MinGasPriceDecorator) AnteHandle(ctx sdk.Context, tx sdk.Tx, simulate 
 		return next(ctx, tx, simulate)
 	}
 
-	// min_gas_price is in atto (1e-18) units, so we need to convert it to micro (1e-6) units
-	// to compare it to the fee amount in micro units
-	// minGasPrice * 1e12 = microMinGasPrice
-	// atto to microMinGasPrice
-	microMinGasPrice := minGasPrice.Quo(sdk.NewDec(1e12))
-
 	evmParams := mpd.evmKeeper.GetParams(ctx)
-	// on default, the denom will recieve the value of the evm denom only
-	// manully set the usix denom to the microMinGasPrice
-	// this will allow the fee to be paid in usix
 	minGasPrices := sdk.DecCoins{
 		{
 			Denom:  evmParams.EvmDenom,
 			Amount: minGasPrice,
 		},
-		{
-			Denom:  "usix",
-			Amount: microMinGasPrice,
-		},
 	}
 
 	feeCoins := feeTx.GetFee()
-	if feeCoins.Empty() {
-		// feeCoins will be 200000000000000000asix if the fee is not set
-		// this is the default value for the fee
-		feeCoins = sdk.NewCoins(sdk.NewCoin(evmParams.EvmDenom, sdk.NewInt(200000000000000000)), sdk.NewCoin("usix", sdk.NewInt(200000)))
-	}
 	gas := feeTx.GetGas()
 
 	requiredFees := make(sdk.Coins, 0)
@@ -101,12 +83,10 @@ func NewEthMinGasPriceDecorator(fk FeeMarketKeeper, ek EVMKeeper) EthMinGasPrice
 }
 
 func (empd EthMinGasPriceDecorator) AnteHandle(ctx sdk.Context, tx sdk.Tx, simulate bool, next sdk.AnteHandler) (newCtx sdk.Context, err error) {
-	// minGasPrice := empd.feesKeeper.GetParams(ctx).MinGasPrice
-	legacyminGasPrice := empd.feesKeeper.GetParams(ctx).LegacyMinGasPrice
-	// legacyminGasPrice := sdk.NewDec(20000000000.000000000000000000)
+	minGasPrice := empd.feesKeeper.GetParams(ctx).MinGasPrice
 
 	// short-circuit if min gas price is 0
-	if legacyminGasPrice.IsZero() {
+	if minGasPrice.IsZero() {
 		return next(ctx, tx, simulate)
 	}
 
@@ -146,7 +126,7 @@ func (empd EthMinGasPriceDecorator) AnteHandle(ctx sdk.Context, tx sdk.Tx, simul
 
 		gasLimit := sdk.NewDecFromBigInt(new(big.Int).SetUint64(ethMsg.GetGas()))
 
-		requiredFee := legacyminGasPrice.Mul(gasLimit)
+		requiredFee := minGasPrice.Mul(gasLimit)
 		fee := sdk.NewDecFromBigInt(feeAmt)
 
 		if fee.LT(requiredFee) {

@@ -11,15 +11,15 @@ import (
 // MigrateStore adds the MinGasPrice param with a value of 0
 // and MinGasMultiplier to 0,5
 func MigrateStore(ctx sdk.Context, paramstore *paramtypes.Subspace) error {
-	if !paramstore.HasKeyTable() {
-		ps := paramstore.WithKeyTable(types.ParamKeyTable())
-		paramstore = &ps
-	}
+	// if !paramstore.HasKeyTable() {
+	// 	ps := paramstore.WithKeyTable(types.ParamKeyTable())
+	// 	paramstore = &ps
+	// }
 
-	// add LegacyBaseFee
-	paramstore.Set(ctx, types.ParamStoreKeyLegacyBaseFee, types.DefaultLegacyBaseFee)
-	// add LegacyMinGasPrice
-	paramstore.Set(ctx, types.ParamStoreKeyLegacyMinGasPrice, types.DefaultLegacyMinGasPrice)
+	// // add LegacyBaseFee
+	// paramstore.Set(ctx, types.ParamStoreKeyLegacyBaseFee, types.DefaultLegacyBaseFee)
+	// // add LegacyMinGasPrice
+	// paramstore.Set(ctx, types.ParamStoreKeyLegacyMinGasPrice, types.DefaultLegacyMinGasPrice)
 	return nil
 }
 
@@ -38,8 +38,8 @@ func MigrateJSON(oldState v010types.GenesisState) types.GenesisState {
 			BaseFee:                  oldState.Params.BaseFee,
 			MinGasPrice:              types.DefaultMinGasPrice,
 			MinGasMultiplier:         types.DefaultMinGasMultiplier,
-			LegacyBaseFee:            types.DefaultLegacyBaseFee,
-			LegacyMinGasPrice:        types.DefaultLegacyMinGasPrice,
+			// LegacyBaseFee:            types.DefaultLegacyBaseFee,
+			// LegacyMinGasPrice:        types.DefaultLegacyMinGasPrice,
 		},
 		BlockGas: oldState.BlockGas,
 	}
