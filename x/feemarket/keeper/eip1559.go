@@ -92,7 +92,7 @@ func (k Keeper) CalculateBaseFee(ctx sdk.Context) *big.Int {
 
 	baseFee := math.BigMax(x.Sub(parentBaseFee, baseFeeDelta), minGasPrice)
 
-	fmt.Printf("############### THIS IS BASE FEE: %v", baseFee)
+	fmt.Printf("############### THIS IS BASE FEE: %v \n", baseFee)
 
 	return baseFee
 }
