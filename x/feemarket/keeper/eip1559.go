@@ -1,6 +1,7 @@
 package keeper
 
 import (
+	"fmt"
 	"math/big"
 
 	sdk "github.com/cosmos/cosmos-sdk/types"
@@ -88,5 +89,10 @@ func (k Keeper) CalculateBaseFee(ctx sdk.Context) *big.Int {
 	// Set global min gas price as lower bound of the base fee, transactions below
 	// the min gas price don't even reach the mempool.
 	minGasPrice := params.MinGasPrice.TruncateInt().BigInt()
-	return math.BigMax(x.Sub(parentBaseFee, baseFeeDelta), minGasPrice)
+
+	baseFee := math.BigMax(x.Sub(parentBaseFee, baseFeeDelta), minGasPrice)
+
+	fmt.Printf("############### THIS IS BASE FEE: %v", baseFee)
+
+	return baseFee
 }
