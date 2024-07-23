@@ -1,8 +1,6 @@
 package types
 
 import (
-	"fmt"
-
 	"github.com/cosmos/cosmos-sdk/codec"
 	codectypes "github.com/cosmos/cosmos-sdk/codec/types"
 	sdk "github.com/cosmos/cosmos-sdk/types"
@@ -68,6 +66,5 @@ func UnpackTxData(any *codectypes.Any) (TxData, error) {
 		return nil, sdkerrors.Wrapf(sdkerrors.ErrUnpackAny, "cannot unpack Any into TxData %T", any)
 	}
 
-  fmt.Printf("####### THIS IS UNPACKDATA %v \n", txData)
 	return txData, nil
 }

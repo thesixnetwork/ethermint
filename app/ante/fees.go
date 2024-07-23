@@ -1,7 +1,6 @@
 package ante
 
 import (
-	"fmt"
 	"math/big"
 
 	sdk "github.com/cosmos/cosmos-sdk/types"
@@ -54,8 +53,6 @@ func (mpd MinGasPriceDecorator) AnteHandle(ctx sdk.Context, tx sdk.Tx, simulate 
 	// Determine the required fees by multiplying each required minimum gas
 	// price by the gas limit, where fee = ceil(minGasPrice * gasLimit).
 	gasLimit := sdk.NewDecFromBigInt(new(big.Int).SetUint64(gas))
-
-  fmt.Printf("###### THIS IS GAS LIMIT: %v \n", gasLimit)
 
 	for _, gp := range minGasPrices {
 		fee := gp.Amount.Mul(gasLimit).Ceil().RoundInt()
