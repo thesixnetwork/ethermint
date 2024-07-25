@@ -1,7 +1,6 @@
 package ante
 
 import (
-	"fmt"
 	"math/big"
 
 	sdk "github.com/cosmos/cosmos-sdk/types"
@@ -85,6 +84,7 @@ func NewEthMinGasPriceDecorator(fk FeeMarketKeeper, ek EVMKeeper) EthMinGasPrice
 
 func (empd EthMinGasPriceDecorator) AnteHandle(ctx sdk.Context, tx sdk.Tx, simulate bool, next sdk.AnteHandler) (newCtx sdk.Context, err error) {
 	minGasPrice := empd.feesKeeper.GetParams(ctx).MinGasPrice
+	legacyminGasPrice := empd.feesKeeper.GetParams(ctx).LegacyMinGasPrice
 
 	// short-circuit if min gas price is 0
 	if minGasPrice.IsZero() {
@@ -123,22 +123,30 @@ func (empd EthMinGasPriceDecorator) AnteHandle(ctx sdk.Context, tx sdk.Tx, simul
 
 		if txData.TxType() != ethtypes.LegacyTxType {
 			feeAmt = ethMsg.GetEffectiveFee(baseFee)
-		}
 
-		gasLimit := sdk.NewDecFromBigInt(new(big.Int).SetUint64(ethMsg.GetGas()))
+			gasLimit := sdk.NewDecFromBigInt(new(big.Int).SetUint64(ethMsg.GetGas()))
+			requiredFee := minGasPrice.Mul(gasLimit)
+			fee := sdk.NewDecFromBigInt(feeAmt)
 
+			if fee.LT(requiredFee) {
+				return ctx, sdkerrors.Wrapf(
+					sdkerrors.ErrInsufficientFee,
+					"provided fee < minimum global fee (%d < %d). Please increase the priority tip (for EIP-1559 txs) or the gas prices (for access list or legacy txs)",
+					fee.TruncateInt().Int64(), requiredFee.TruncateInt().Int64(),
+				)
+			}
+		} else {
+			gasLimit := sdk.NewDecFromBigInt(new(big.Int).SetUint64(ethMsg.GetGas()))
+			legacyRequiredFee := legacyminGasPrice.Mul(gasLimit)
+			fee := sdk.NewDecFromBigInt(feeAmt)
 
-		fmt.Printf("############ FEE Amount: %v \n", feeAmt)
-
-		requiredFee := minGasPrice.Mul(gasLimit)
-		fee := sdk.NewDecFromBigInt(feeAmt)
-
-		if fee.LT(requiredFee) { 
-			return ctx, sdkerrors.Wrapf(
-				sdkerrors.ErrInsufficientFee,
-				"provided fee < minimum global fee (%d < %d). Please increase the priority tip (for EIP-1559 txs) or the gas prices (for access list or legacy txs)",
-				fee.TruncateInt().Int64(), requiredFee.TruncateInt().Int64(),
-			)
+			if fee.LT(legacyRequiredFee) {
+				return ctx, sdkerrors.Wrapf(
+					sdkerrors.ErrInsufficientFee,
+					"provided fee < minimum global fee (%d < %d). Please increase the priority tip (for EIP-1559 txs) or the gas prices (for access list or legacy txs)",
+					fee.TruncateInt().Int64(), legacyRequiredFee.TruncateInt().Int64(),
+				)
+			}
 		}
 	}
 

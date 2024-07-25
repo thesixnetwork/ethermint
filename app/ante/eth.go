@@ -268,6 +268,7 @@ func (ctd CanTransferDecorator) AnteHandle(ctx sdk.Context, tx sdk.Tx, simulate 
 		}
 
 		baseFee := ctd.evmKeeper.GetBaseFee(ctx, ethCfg)
+		legacybaseFee := ctd.evmKeeper.GetLegacyBaseFee(ctx, ethCfg)
 
 		coreMsg, err := msgEthTx.AsMessage(signer, baseFee)
 		if err != nil {
@@ -298,21 +299,48 @@ func (ctd CanTransferDecorator) AnteHandle(ctx sdk.Context, tx sdk.Tx, simulate 
 			)
 		}
 
-		if evmtypes.IsLondon(ethCfg, ctx.BlockHeight()) {
-			if baseFee == nil {
-				return ctx, sdkerrors.Wrap(
-					evmtypes.ErrInvalidBaseFee,
-					"base fee is supported but evm block context value is nil",
-				)
+		// check txType Legacy or not
+		txData, err := evmtypes.UnpackTxData(msgEthTx.Data)
+		if err != nil {
+			return ctx, sdkerrors.Wrapf(err, "failed to unpack tx data %s", msgEthTx.Hash)
+		}
+
+		if txData.TxType() != ethtypes.LegacyTxType {
+			if evmtypes.IsLondon(ethCfg, ctx.BlockHeight()) {
+				if baseFee == nil {
+					return ctx, sdkerrors.Wrap(
+						evmtypes.ErrInvalidBaseFee,
+						"base fee is supported but evm block context value is nil",
+					)
+				}
+
+				if coreMsg.GasFeeCap().Cmp(baseFee) < 0 {
+					return ctx, sdkerrors.Wrapf(
+						sdkerrors.ErrInsufficientFee,
+						"max fee per gas less than block base fee (%s < %s)",
+						coreMsg.GasFeeCap(), baseFee,
+					)
+				}
 			}
-			if coreMsg.GasFeeCap().Cmp(baseFee) < 0 {
-				return ctx, sdkerrors.Wrapf(
-					sdkerrors.ErrInsufficientFee,
-					"max fee per gas less than block base fee (%s < %s)",
-					coreMsg.GasFeeCap(), baseFee,
-				)
+		} else {
+			if evmtypes.IsLondon(ethCfg, ctx.BlockHeight()) {
+				if baseFee == nil {
+					return ctx, sdkerrors.Wrap(
+						evmtypes.ErrInvalidBaseFee,
+						"base fee is supported but evm block context value is nil",
+					)
+				}
+
+				if coreMsg.GasFeeCap().Cmp(legacybaseFee) < 0 {
+					return ctx, sdkerrors.Wrapf(
+						sdkerrors.ErrInsufficientFee,
+						"max fee per gas less than block base fee (%s < %s)",
+						coreMsg.GasFeeCap(), legacybaseFee,
+					)
+				}
 			}
 		}
+
 	}
 
 	return next(ctx, tx, simulate)

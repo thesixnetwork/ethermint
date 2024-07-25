@@ -44,13 +44,19 @@ func (k Keeper) SetBaseFee(ctx sdk.Context, baseFee *big.Int) {
 }
 
 
-// // GetLegacyBaseFee get's the base fee from the paramSpace
-// // return nil if base fee is not enabled
-// func (k Keeper) GetLegacyBaseFee(ctx sdk.Context) *big.Int {
-// 	params := k.GetParams(ctx)
-// 	if params.NoBaseFee {
-// 		return nil
-// 	}
+// GetLegacyBaseFee get's the base fee from the paramSpace
+// return nil if base fee is not enabled
+func (k Keeper) GetLegacyBaseFee(ctx sdk.Context) *big.Int {
+	params := k.GetParams(ctx)
+	if params.NoBaseFee {
+		return nil
+	}
 
-// 	return params.LegacyBaseFee.BigInt()
-// }
+	return params.LegacyBaseFee.BigInt()
+}
+
+
+// SetBaseFee set's the base fee in the paramSpace
+func (k Keeper) SetLegacyBaseFee(ctx sdk.Context, legacyBaseFee *big.Int) {
+	k.paramSpace.Set(ctx, types.ParamStoreKeyLegacyBaseFee, sdk.NewIntFromBigInt(legacyBaseFee))
+}
