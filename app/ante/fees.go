@@ -128,7 +128,7 @@ func (empd EthMinGasPriceDecorator) AnteHandle(ctx sdk.Context, tx sdk.Tx, simul
 		gasLimit := sdk.NewDecFromBigInt(new(big.Int).SetUint64(ethMsg.GetGas()))
 
 
-		fmt.Printf("############ FEE Amount: %v", feeAmt)
+		fmt.Printf("############ FEE Amount: %v \n", feeAmt)
 
 		requiredFee := minGasPrice.Mul(gasLimit)
 		fee := sdk.NewDecFromBigInt(feeAmt)
