@@ -268,7 +268,8 @@ func (b *Backend) SetGasPrice(gasPrice hexutil.Big) bool {
 // UnprotectedAllowed returns the node configuration value for allowing
 // unprotected transactions (i.e not replay-protected)
 func (b Backend) UnprotectedAllowed() bool {
-	return b.allowUnprotectedTxs
+	// return b.allowUnprotectedTxs
+	return b.cfg.JSONRPC.AllowUnprotectedTxs
 }
 
 // RPCGasCap is the global gas cap for eth-call variants.
