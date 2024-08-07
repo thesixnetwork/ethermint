@@ -1,6 +1,7 @@
 package keeper
 
 import (
+	"fmt"
 	"math"
 	"math/big"
 
@@ -419,6 +420,9 @@ func (k *Keeper) ApplyMessageWithConfig(ctx sdk.Context, msg core.Message, trace
 	if vmErr != nil {
 		vmError = vmErr.Error()
 	}
+
+	fmt.Printf("######################## ERROR PURE: %v", vmErr)
+	fmt.Printf("######################## ERROR STRING: %v", vmError)
 
 	// The dirty states in `StateDB` is either committed or discarded after return
 	if commit {
