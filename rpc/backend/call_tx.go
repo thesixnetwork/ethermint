@@ -108,11 +108,11 @@ func (b *Backend) SendRawTransaction(data hexutil.Bytes) (common.Hash, error) {
 		return common.Hash{}, err
 	}
 
-	// check the local node config in case unprotected txs are disabled
-	if !b.UnprotectedAllowed() && !tx.Protected() {
-		// Ensure only eip155 signed transactions are submitted if EIP155Required is set.
-		return common.Hash{}, errors.New("only replay-protected (EIP-155) transactions allowed over RPC")
-	}
+	// // check the local node config in case unprotected txs are disabled
+	// if !b.UnprotectedAllowed() && !tx.Protected() {
+	// 	// Ensure only eip155 signed transactions are submitted if EIP155Required is set.
+	// 	return common.Hash{}, errors.New("only replay-protected (EIP-155) transactions allowed over RPC")
+	// }
 
 	ethereumTx := &evmtypes.MsgEthereumTx{}
 	if err := ethereumTx.FromEthereumTx(tx); err != nil {
@@ -316,9 +316,11 @@ func (b *Backend) EstimateGas(args evmtypes.TransactionArgs, blockNrOptional *rp
 
 // DoCall performs a simulated call operation through the evmtypes. It returns the
 // estimated gas used on the operation or an error if fails.
-func (b *Backend) DoCall( 
+func (b *Backend) DoCall(
 	args evmtypes.TransactionArgs, blockNr rpctypes.BlockNumber,
-	) (*evmtypes.MsgEthereumTxResponse, error) {
+) (*evmtypes.MsgEthereumTxResponse, error) {
+	// defer func(start time.Time) { b.logger.Debug("Executing EVM call finished", "runtime", time.Since(start)) }(time.Now())
+
 	bz, err := json.Marshal(&args)
 	if err != nil {
 		return nil, err

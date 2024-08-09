@@ -160,10 +160,19 @@ require (
 	nhooyr.io/websocket v1.8.6 // indirect
 )
 
+require (
+	github.com/fjl/memsize v0.0.0-20190710130421-bcb5799ab5e5 // indirect
+	github.com/golang-jwt/jwt/v4 v4.3.0 // indirect
+	github.com/hashicorp/go-bexpr v0.1.10 // indirect
+	github.com/mitchellh/pointerstructure v1.2.0 // indirect
+	golang.org/x/time v0.0.0-20210723032227-1f47c861a9ac // indirect
+	gopkg.in/urfave/cli.v1 v1.20.0 // indirect
+)
+
 replace (
 	github.com/99designs/keyring => github.com/cosmos/keyring v1.1.7-0.20210622111912-ef00f8ac3d76
 	github.com/cosmos/cosmos-sdk => github.com/thesixnetwork/cosmos-sdk v0.45.6-six-protocol.0.20240102041747-d512c8bc8f90
-	github.com/ethereum/go-ethereum => github.com/thesixnetwork/go-ethereum v1.10.20-0.20240712070259-a344866e43aa
+	github.com/ethereum/go-ethereum => github.com/thesixnetwork/go-ethereum v1.10.20-0.20240809091736-4bdf309b3625
 	github.com/gogo/protobuf => github.com/regen-network/protobuf v1.3.3-alpha.regen.1
 	google.golang.org/grpc => google.golang.org/grpc v1.33.2
 )
