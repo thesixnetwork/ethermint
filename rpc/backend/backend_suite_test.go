@@ -18,8 +18,8 @@ import (
 	ethtypes "github.com/ethereum/go-ethereum/core/types"
 	"github.com/stretchr/testify/suite"
 	tmrpctypes "github.com/tendermint/tendermint/rpc/core/types"
+  simapp "github.com/cosmos/cosmos-sdk/simapp"
 
-	"github.com/evmos/ethermint/app"
 	"github.com/evmos/ethermint/crypto/hd"
 	"github.com/evmos/ethermint/encoding"
 	"github.com/evmos/ethermint/indexer"
@@ -50,7 +50,7 @@ func (suite *BackendTestSuite) SetupTest() {
 		panic(err)
 	}
 
-	encodingConfig := encoding.MakeConfig(app.ModuleBasics)
+	encodingConfig := encoding.MakeConfig(simapp.ModuleBasics)
 	clientCtx := client.Context{}.WithChainID("ethermint_9000-1").
 		WithHeight(1).
 		WithTxConfig(encodingConfig.TxConfig).
@@ -61,7 +61,7 @@ func (suite *BackendTestSuite) SetupTest() {
 
 	idxer := indexer.NewKVIndexer(dbm.NewMemDB(), ctx.Logger, clientCtx)
 
-	suite.backend = NewBackend(ctx, ctx.Logger, clientCtx, allowUnprotectedTxs, idxer)
+	suite.backend = NewBackend(ctx, ctx.Logger, clientCtx,allowUnprotectedTxs, idxer,nil)
 	suite.backend.queryClient.QueryClient = mocks.NewQueryClient(suite.T())
 	suite.backend.clientCtx.Client = mocks.NewClient(suite.T())
 	suite.backend.ctx = rpctypes.ContextWithHeight(1)

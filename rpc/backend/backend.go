@@ -20,6 +20,7 @@ import (
 	rpctypes "github.com/evmos/ethermint/rpc/types"
 	"github.com/evmos/ethermint/server/config"
 	ethermint "github.com/evmos/ethermint/types"
+	"github.com/evmos/ethermint/x/evm/keeper"
 	evmtypes "github.com/evmos/ethermint/x/evm/types"
 	"github.com/spf13/viper"
 	"github.com/tendermint/tendermint/libs/log"
@@ -116,7 +117,7 @@ type EVMBackend interface {
 	SendRawTransaction(data hexutil.Bytes) (common.Hash, error)
 	SetTxDefaults(args evmtypes.TransactionArgs) (evmtypes.TransactionArgs, error)
 	EstimateGas(args evmtypes.TransactionArgs, blockNrOptional *rpctypes.BlockNumber) (hexutil.Uint64, error)
-	DoCall(args evmtypes.TransactionArgs, blockNr rpctypes.BlockNumber) (*evmtypes.MsgEthereumTxResponse, error)
+	DoCall(args evmtypes.TransactionArgs, blockNr rpctypes.BlockNumber, overrides *rpctypes.StateOverride) (*evmtypes.MsgEthereumTxResponse, error)
 
 	// Filter API
 	GetLogs(hash common.Hash) ([][]*ethtypes.Log, error)
@@ -142,6 +143,7 @@ type Backend struct {
 	cfg                 config.Config
 	allowUnprotectedTxs bool
 	indexer             ethermint.EVMTxIndexer
+	keeper              *keeper.Keeper
 }
 
 // NewBackend creates a new Backend instance for cosmos and ethereum namespaces
@@ -151,6 +153,7 @@ func NewBackend(
 	clientCtx client.Context,
 	allowUnprotectedTxs bool,
 	indexer ethermint.EVMTxIndexer,
+	evmkeeper *keeper.Keeper,
 ) *Backend {
 	chainID, err := ethermint.ParseChainID(clientCtx.ChainID)
 	if err != nil {
@@ -187,5 +190,6 @@ func NewBackend(
 		cfg:                 appConf,
 		allowUnprotectedTxs: allowUnprotectedTxs,
 		indexer:             indexer,
+		keeper:              evmkeeper,
 	}
 }

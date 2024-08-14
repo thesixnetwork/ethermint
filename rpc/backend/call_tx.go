@@ -19,6 +19,8 @@ import (
 	"github.com/pkg/errors"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
+	sdk "github.com/cosmos/cosmos-sdk/types"
+	"github.com/evmos/ethermint/x/evm/statedb"
 )
 
 // Resend accepts an existing transaction and a new gas price and limit. It will remove
@@ -317,9 +319,24 @@ func (b *Backend) EstimateGas(args evmtypes.TransactionArgs, blockNrOptional *rp
 // DoCall performs a simulated call operation through the evmtypes. It returns the
 // estimated gas used on the operation or an error if fails.
 func (b *Backend) DoCall(
-	args evmtypes.TransactionArgs, blockNr rpctypes.BlockNumber,
+	args evmtypes.TransactionArgs, blockNr rpctypes.BlockNumber, overrides *rpctypes.StateOverride,
 ) (*evmtypes.MsgEthereumTxResponse, error) {
 	// defer func(start time.Time) { b.logger.Debug("Executing EVM call finished", "runtime", time.Since(start)) }(time.Now())
+
+	// check passing overide or not
+
+	if overrides != nil {
+		fmt.Println("################ PROCESSS OVERIDE")
+		context := rpctypes.ContextWithHeight(blockNr.Int64())
+		ctx := sdk.UnwrapSDKContext(context)
+
+		txConfig := statedb.NewEmptyTxConfig(common.BytesToHash(ctx.HeaderHash().Bytes()))
+
+		stateDb := statedb.New(ctx, b.keeper, txConfig)
+		if err := overrides.Apply(stateDb); err != nil {
+			return nil, err
+		}
+	}
 
 	bz, err := json.Marshal(&args)
 	if err != nil {

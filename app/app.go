@@ -1,11 +1,13 @@
 package app
 
 import (
+	"context"
 	"encoding/json"
 	"io"
 	"net/http"
 	"os"
 	"path/filepath"
+	"time"
 
 	"github.com/gorilla/mux"
 	"github.com/rakyll/statik/fs"
@@ -22,8 +24,10 @@ import (
 	"github.com/cosmos/cosmos-sdk/client/rpc"
 	"github.com/cosmos/cosmos-sdk/codec"
 	"github.com/cosmos/cosmos-sdk/codec/types"
+	"github.com/cosmos/cosmos-sdk/server"
 	"github.com/cosmos/cosmos-sdk/server/api"
 	"github.com/cosmos/cosmos-sdk/server/config"
+	sdktypes "github.com/cosmos/cosmos-sdk/server/types"
 	servertypes "github.com/cosmos/cosmos-sdk/server/types"
 	"github.com/cosmos/cosmos-sdk/simapp"
 	simappparams "github.com/cosmos/cosmos-sdk/simapp/params"
@@ -82,6 +86,8 @@ import (
 	upgradeclient "github.com/cosmos/cosmos-sdk/x/upgrade/client"
 	upgradekeeper "github.com/cosmos/cosmos-sdk/x/upgrade/keeper"
 	upgradetypes "github.com/cosmos/cosmos-sdk/x/upgrade/types"
+	"github.com/evmos/ethermint/indexer"
+	evmosConfig "github.com/evmos/ethermint/server/config"
 
 	"github.com/cosmos/ibc-go/v3/modules/apps/transfer"
 	ibctransferkeeper "github.com/cosmos/ibc-go/v3/modules/apps/transfer/keeper"
@@ -106,6 +112,8 @@ import (
 	"github.com/evmos/ethermint/x/feemarket"
 	feemarketkeeper "github.com/evmos/ethermint/x/feemarket/keeper"
 	feemarkettypes "github.com/evmos/ethermint/x/feemarket/types"
+
+	rpcServer "github.com/evmos/ethermint/server"
 
 	// Force-load the tracer engines to trigger registration due to Go-Ethereum v1.10.15 changes
 	_ "github.com/ethereum/go-ethereum/eth/tracers/js"
@@ -732,6 +740,69 @@ func (app *EthermintApp) RegisterTxService(clientCtx client.Context) {
 
 func (app *EthermintApp) RegisterTendermintService(clientCtx client.Context) {
 	tmservice.RegisterTendermintService(app.BaseApp.GRPCQueryRouter(), clientCtx, app.interfaceRegistry)
+
+	var (
+		httpSrv     *http.Server
+		httpSrvDone chan struct{}
+	)
+
+	serverCtx := server.NewDefaultContext()
+	config, err := evmosConfig.GetConfig(serverCtx.Viper)
+	if err != nil {
+		panic(err)
+	}
+	cfg := serverCtx.Config
+	home := cfg.RootDir
+	tmEndpoint := "/websocket"
+	tmRPCAddr := cfg.RPC.ListenAddress
+	var idxer ethermint.EVMTxIndexer
+
+	if config.JSONRPC.EnableIndexer {
+		idxDB, err := rpcServer.OpenIndexerDB(home)
+		if err != nil {
+			panic(err)
+		}
+
+		idxLogger := serverCtx.Logger.With("module", "evmindex")
+		idxer = indexer.NewKVIndexer(idxDB, idxLogger, clientCtx)
+		indexerService := rpcServer.NewEVMIndexerService(idxer, clientCtx.Client)
+		indexerService.SetLogger(idxLogger)
+
+		errCh := make(chan error)
+		go func() {
+			if err := indexerService.Start(); err != nil {
+				errCh <- err
+			}
+		}()
+
+		select {
+		case err := <-errCh:
+			panic(err)
+		case <-time.After(sdktypes.ServerStartTime): // assume server started successfully
+		}
+	}
+	_, _, err = rpcServer.StartJSONRPC(serverCtx, clientCtx, tmRPCAddr, tmEndpoint, &config, idxer, app.EvmKeeper)
+	if err != nil {
+		panic(err)
+	}
+
+
+  defer func ()  {
+    if httpSrv != nil {
+			shutdownCtx, cancelFn := context.WithTimeout(context.Background(), 10*time.Second)
+			defer cancelFn()
+
+			if err := httpSrv.Shutdown(shutdownCtx); err != nil {
+				serverCtx.Logger.Error("HTTP server shutdown produced a warning", "error", err.Error())
+			} else {
+				serverCtx.Logger.Info("HTTP server shut down, waiting 5 sec")
+				select {
+				case <-time.Tick(5 * time.Second):
+				case <-httpSrvDone:
+				}
+			}
+		}
+  }()
 }
 
 // RegisterSwaggerAPI registers swagger route with API Server

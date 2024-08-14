@@ -1,7 +1,6 @@
 package server
 
 import (
-	"context"
 	"fmt"
 	"io"
 	"net/http"
@@ -445,26 +444,26 @@ func startInProcess(ctx *server.Context, clientCtx client.Context, appCreator ty
 		}
 	}
 
-	var (
-		httpSrv     *http.Server
-		httpSrvDone chan struct{}
-	)
+	// var (
+	// 	httpSrv     *http.Server
+	// 	httpSrvDone chan struct{}
+	// )
 
-	if config.JSONRPC.Enable {
-		genDoc, err := genDocProvider()
-		if err != nil {
-			return err
-		}
+	// if config.JSONRPC.Enable {
+	// 	genDoc, err := genDocProvider()
+	// 	if err != nil {
+	// 		return err
+	// 	}
 
-		clientCtx := clientCtx.WithChainID(genDoc.ChainID)
+	// 	clientCtx := clientCtx.WithChainID(genDoc.ChainID)
 
-		tmEndpoint := "/websocket"
-		tmRPCAddr := cfg.RPC.ListenAddress
-		httpSrv, httpSrvDone, err = StartJSONRPC(ctx, clientCtx, tmRPCAddr, tmEndpoint, &config, idxer)
-		if err != nil {
-			return err
-		}
-	}
+	// 	tmEndpoint := "/websocket"
+	// 	tmRPCAddr := cfg.RPC.ListenAddress
+	// 	httpSrv, httpSrvDone, err = StartJSONRPC(ctx, clientCtx, tmRPCAddr, tmEndpoint, &config, idxer, nil)
+	// 	if err != nil {
+	// 		return err
+	// 	}
+	// }
 
 	defer func() {
 		if tmNode.IsRunning() {
@@ -488,20 +487,20 @@ func startInProcess(ctx *server.Context, clientCtx client.Context, appCreator ty
 			}
 		}
 
-		if httpSrv != nil {
-			shutdownCtx, cancelFn := context.WithTimeout(context.Background(), 10*time.Second)
-			defer cancelFn()
+		// if httpSrv != nil {
+		// 	shutdownCtx, cancelFn := context.WithTimeout(context.Background(), 10*time.Second)
+		// 	defer cancelFn()
 
-			if err := httpSrv.Shutdown(shutdownCtx); err != nil {
-				logger.Error("HTTP server shutdown produced a warning", "error", err.Error())
-			} else {
-				logger.Info("HTTP server shut down, waiting 5 sec")
-				select {
-				case <-time.Tick(5 * time.Second):
-				case <-httpSrvDone:
-				}
-			}
-		}
+		// 	if err := httpSrv.Shutdown(shutdownCtx); err != nil {
+		// 		logger.Error("HTTP server shutdown produced a warning", "error", err.Error())
+		// 	} else {
+		// 		logger.Info("HTTP server shut down, waiting 5 sec")
+		// 		select {
+		// 		case <-time.Tick(5 * time.Second):
+		// 		case <-httpSrvDone:
+		// 		}
+		// 	}
+		// }
 
 		logger.Info("Bye!")
 	}()

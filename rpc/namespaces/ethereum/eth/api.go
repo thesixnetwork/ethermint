@@ -2,7 +2,6 @@ package eth
 
 import (
 	"context"
-	"fmt"
 	"math/big"
 
 	"github.com/ethereum/go-ethereum/signer/core/apitypes"
@@ -17,10 +16,8 @@ import (
 
 	"github.com/evmos/ethermint/rpc/backend"
 
-	sdk "github.com/cosmos/cosmos-sdk/types"
 	rpctypes "github.com/evmos/ethermint/rpc/types"
 	ethermint "github.com/evmos/ethermint/types"
-	"github.com/evmos/ethermint/x/evm/statedb"
 	evmtypes "github.com/evmos/ethermint/x/evm/types"
 )
 
@@ -290,24 +287,8 @@ func (e *PublicAPI) Call(args evmtypes.TransactionArgs, blockNrOrHash rpctypes.B
 		return nil, err
 	}
 
-	// check passing overide or not
 
-	if overrides != nil {
-	
-		fmt.Println("################ PROCESSS OVERIDE")
-
-		context := rpctypes.ContextWithHeight(blockNum.Int64())
-		ctx := sdk.UnwrapSDKContext(context)
-
-		txConfig := statedb.NewEmptyTxConfig(common.BytesToHash(ctx.HeaderHash().Bytes()))
-
-		stateDb := statedb.New(ctx, nil, txConfig)
-		if err := overrides.Apply(stateDb); err != nil {
-			return nil, err
-		}
-	}
-
-	data, err := e.backend.DoCall(args, blockNum)
+	data, err := e.backend.DoCall(args, blockNum, overrides)
 	if err != nil {
 		return []byte{}, err
 	}
