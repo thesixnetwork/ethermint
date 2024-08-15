@@ -4,14 +4,14 @@ accounts:
   - name: bob
     coins: ["5000000000000aphoton"]
   - name: faucet
-    coins: ["1000000000000000000000000000aphoton"]
+    coins: ["100000000000000000000000aphoton"]
 validator:
   name: alice
-  staked: "100000000000000000000aphoton"
+  staked: "10000000000000aphoton"
 faucet:
   port: 4500
   name: "faucet"
-  coins: ["1000000000000000000000000000aphoton"]
+  coins: ["1000000000000aphoton"]
   coins_max: ["100000000aphoton"]
 build:
   binary: "ethermintd"

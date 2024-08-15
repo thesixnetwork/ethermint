@@ -59,6 +59,7 @@ type stateObject struct {
 	// state storage
 	originStorage Storage
 	dirtyStorage  Storage
+	fakeStorage   Storage // Fake storage which constructed by caller for debugging purpose.
 
 	// transientStorage is an in memory storage of the latest committed entries in the current transaction execution.
 	// It is only used when multiple commits are made within the same transaction execution.
@@ -239,4 +240,22 @@ func (s *stateObject) SetState(key common.Hash, value common.Hash) {
 
 func (s *stateObject) setState(key, value common.Hash) {
 	s.dirtyStorage[key] = value
+}
+
+// SetStorage replaces the entire state storage with the given one.
+//
+// After this function is called, all original state will be ignored and state
+// lookup only happens in the fake state storage.
+//
+// Note this function should only be used for debugging purpose.
+func (s *stateObject) SetStorage(storage map[common.Hash]common.Hash) {
+	// Allocate fake storage if it's nil.
+	if s.fakeStorage == nil {
+		s.fakeStorage = make(Storage)
+	}
+	for key, value := range storage {
+		s.fakeStorage[key] = value
+	}
+	// Don't bother journal since this function should only be used for
+	// debugging and the `fake` storage won't be committed to database.
 }

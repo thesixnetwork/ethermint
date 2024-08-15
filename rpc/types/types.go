@@ -1,11 +1,13 @@
 package types
 
 import (
+	"fmt"
 	"math/big"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	ethtypes "github.com/ethereum/go-ethereum/core/types"
+	"github.com/evmos/ethermint/x/evm/statedb"
 )
 
 // Copied the Account and StorageResult types since they are registered under an
@@ -86,4 +88,39 @@ type OneFeeHistory struct {
 	BaseFee      *big.Int   // base fee  for each block
 	Reward       []*big.Int // each element of the array will have the tip provided to miners for the percentile given
 	GasUsedRatio float64    // the ratio of gas used to the gas limit for each block
+}
+
+// Apply overrides the fields of specified accounts into the given state.
+func (diff *StateOverride) Apply(state *statedb.StateDB) error {
+	if diff == nil {
+		return nil
+	}
+	for addr, account := range *diff {
+		// Override account nonce.
+		if account.Nonce != nil {
+			state.SetNonce(addr, uint64(*account.Nonce))
+		}
+		// Override account(contract) code.
+		if account.Code != nil {
+			state.SetCode(addr, *account.Code)
+		}
+		// Override account balance.
+		if account.Balance != nil {
+			state.SetBalance(addr, (*big.Int)(*account.Balance))
+		}
+		if account.State != nil && account.StateDiff != nil {
+			return fmt.Errorf("account %s has both 'state' and 'stateDiff'", addr.Hex())
+		}
+		// Replace entire state if caller requires.
+		if account.State != nil {
+			state.SetStorage(addr, *account.State)
+		}
+		// Apply state diff into specified accounts.
+		if account.StateDiff != nil {
+			for key, value := range *account.StateDiff {
+				state.SetState(addr, key, value)
+			}
+		}
+	}
+	return nil
 }

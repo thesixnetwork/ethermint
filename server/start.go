@@ -46,6 +46,7 @@ import (
 	"github.com/evmos/ethermint/server/config"
 	srvflags "github.com/evmos/ethermint/server/flags"
 	ethermint "github.com/evmos/ethermint/types"
+	ethermintapp "github.com/evmos/ethermint/app"
 )
 
 // StartCmd runs the service passed in, either stand-alone or in-process with
@@ -299,6 +300,7 @@ func startInProcess(ctx *server.Context, clientCtx client.Context, appCreator ty
 	}
 
 	app := appCreator(ctx.Logger, db, traceWriter, ctx.Viper)
+  evmKeeper := app.(*ethermintapp.EthermintApp).EvmKeeper
 
 	nodeKey, err := p2p.LoadOrGenNodeKey(cfg.NodeKeyFile())
 	if err != nil {
@@ -460,7 +462,7 @@ func startInProcess(ctx *server.Context, clientCtx client.Context, appCreator ty
 
 		tmEndpoint := "/websocket"
 		tmRPCAddr := cfg.RPC.ListenAddress
-		httpSrv, httpSrvDone, err = StartJSONRPC(ctx, clientCtx, tmRPCAddr, tmEndpoint, &config, idxer)
+		httpSrv, httpSrvDone, err = StartJSONRPC(ctx, clientCtx, tmRPCAddr, tmEndpoint, &config, idxer, evmKeeper)
 		if err != nil {
 			return err
 		}

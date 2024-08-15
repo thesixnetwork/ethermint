@@ -9,12 +9,14 @@ import (
 
 	"github.com/cosmos/cosmos-sdk/client/flags"
 	sdkerrors "github.com/cosmos/cosmos-sdk/types/errors"
+	sdk "github.com/cosmos/cosmos-sdk/types"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	ethtypes "github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/core/vm"
 	rpctypes "github.com/evmos/ethermint/rpc/types"
 	ethermint "github.com/evmos/ethermint/types"
+	"github.com/evmos/ethermint/x/evm/statedb"
 	evmtypes "github.com/evmos/ethermint/x/evm/types"
 	"github.com/pkg/errors"
 	"google.golang.org/grpc/codes"
@@ -317,7 +319,7 @@ func (b *Backend) EstimateGas(args evmtypes.TransactionArgs, blockNrOptional *rp
 // DoCall performs a simulated call operation through the evmtypes. It returns the
 // estimated gas used on the operation or an error if fails.
 func (b *Backend) DoCall(
-	args evmtypes.TransactionArgs, blockNr rpctypes.BlockNumber,
+	args evmtypes.TransactionArgs, blockNr rpctypes.BlockNumber, overrides *rpctypes.StateOverride,
 ) (*evmtypes.MsgEthereumTxResponse, error) {
 	bz, err := json.Marshal(&args)
 	if err != nil {
@@ -342,6 +344,19 @@ func (b *Backend) DoCall(
 		ctx, cancel = context.WithTimeout(ctx, timeout)
 	} else {
 		ctx, cancel = context.WithCancel(ctx)
+	}
+
+	if overrides != nil {
+		fmt.Println("################ PROCESSS OVERIDE")
+		context := rpctypes.ContextWithHeight(blockNr.Int64())
+		ctx := sdk.UnwrapSDKContext(context)
+
+		txConfig := statedb.NewEmptyTxConfig(common.BytesToHash(ctx.HeaderHash().Bytes()))
+
+		stateDb := statedb.New(ctx, b.keeper, txConfig)
+		if err := overrides.Apply(stateDb); err != nil {
+			return nil, err
+		}
 	}
 
 	// Make sure the context is canceled when the call has completed
