@@ -1,6 +1,8 @@
 package evm
 
 import (
+	"fmt"
+
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	sdkerrors "github.com/cosmos/cosmos-sdk/types/errors"
 
@@ -14,8 +16,10 @@ func NewHandler(server types.MsgServer) sdk.Handler {
 
 		switch msg := msg.(type) {
 		case *types.MsgEthereumTx:
+      fmt.Println("######################### NEW HANDLER #########################")
 			// execute state transition
 			res, err := server.EthereumTx(sdk.WrapSDKContext(ctx), msg)
+      fmt.Println("######################### AFTER NEW HANDLER EthereumTx #########################")
 			return sdk.WrapServiceResult(ctx, res, err)
 
 		default:

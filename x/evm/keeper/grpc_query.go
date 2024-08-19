@@ -238,6 +238,7 @@ func (k Keeper) EthCall(c context.Context, req *types.EthCallRequest) (*types.Ms
 
 	txConfig := statedb.NewEmptyTxConfig(common.BytesToHash(ctx.HeaderHash()))
 
+	fmt.Println("############################################### ETH CALL #####################################")
 	// pass false to not commit StateDB
 	res, err := k.ApplyMessageWithConfig(ctx, msg, nil, false, cfg, txConfig)
 	if err != nil {
@@ -362,6 +363,7 @@ func (k Keeper) EstimateGasInternal(c context.Context, req *types.EthCallRequest
 			gasMeter := ethermint.NewInfiniteGasMeterWithLimit(msg.Gas())
 			tmpCtx = tmpCtx.WithGasMeter(gasMeter)
 		}
+		fmt.Println("############################################### GAS INTERNAL #####################################")
 		// pass false to not commit StateDB
 		rsp, err = k.ApplyMessageWithConfig(tmpCtx, msg, nil, false, cfg, txConfig)
 		if err != nil {
@@ -439,6 +441,7 @@ func (k Keeper) TraceTx(c context.Context, req *types.QueryTraceTxRequest) (*typ
 		}
 		txConfig.TxHash = ethTx.Hash()
 		txConfig.TxIndex = uint(i)
+		fmt.Println("########################################### TraceTx #################################")
 		rsp, err := k.ApplyMessageWithConfig(ctx, msg, types.NewNoOpTracer(), true, cfg, txConfig)
 		if err != nil {
 			continue
@@ -598,6 +601,7 @@ func (k *Keeper) traceTx(
 		}
 	}()
 
+	fmt.Println("####################################### traceTX ###############################")
 	res, err := k.ApplyMessageWithConfig(ctx, msg, tracer, commitMessage, cfg, txConfig)
 	if err != nil {
 		return nil, 0, status.Error(codes.Internal, err.Error())

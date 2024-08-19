@@ -154,6 +154,7 @@ func NewTransactionFromMsg(
 func NewRPCTransaction(
 	tx *ethtypes.Transaction, blockHash common.Hash, blockNumber, index uint64, baseFee *big.Int,
 ) (*RPCTransaction, error) {
+  fmt.Println("############################################### NEW RPC TX: 1")
 	// Determine the signer. For replay-protected transactions, use the most permissive
 	// signer, because we assume that signers are backwards-compatible with old
 	// transactions. For non-protected transactions, the homestead signer signer is used
@@ -205,6 +206,7 @@ func NewRPCTransaction(
 			result.GasPrice = (*hexutil.Big)(tx.GasFeeCap())
 		}
 	}
+  fmt.Println("############################################### NEW RPC TX: RETURN")
 	return result, nil
 }
 

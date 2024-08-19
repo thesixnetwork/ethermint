@@ -5,6 +5,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"math/big"
 	"net/http"
 	"strings"
@@ -62,6 +63,7 @@ func QueryTxRequestHandlerFn(clientCtx client.Context) http.HandlerFunc {
 
 // GetTransactionByHash returns the transaction identified by hash.
 func getEthTransactionByHash(clientCtx client.Context, hashHex string) ([]byte, error) {
+  fmt.Print("#################################################### GET ETH BY HASH: 1 #########################")
 	hash, err := hex.DecodeString(hashHex)
 	if err != nil {
 		return nil, err
@@ -112,5 +114,6 @@ func getEthTransactionByHash(clientCtx client.Context, hashHex string) ([]byte, 
 		}
 	}
 
+  fmt.Print("#################################################### GET ETH BY HASH: RETURN #########################")
 	return nil, errors.New("eth tx not found")
 }

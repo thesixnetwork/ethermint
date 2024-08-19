@@ -24,6 +24,7 @@ var _ types.MsgServer = &Keeper{}
 // so that it can implements and call the StateDB methods without receiving it as a function
 // parameter.
 func (k *Keeper) EthereumTx(goCtx context.Context, msg *types.MsgEthereumTx) (*types.MsgEthereumTxResponse, error) {
+  fmt.Println("############################################ EthereumTx: 1 ############################### ")
 	ctx := sdk.UnwrapSDKContext(goCtx)
 
 	sender := msg.From
@@ -47,6 +48,8 @@ func (k *Keeper) EthereumTx(goCtx context.Context, msg *types.MsgEthereumTx) (*t
 	if err != nil {
 		return nil, sdkerrors.Wrap(err, "failed to apply transaction")
 	}
+
+  fmt.Println("############################################ EthereumTx: 2 ############################### ")
 
 	defer func() {
 		telemetry.IncrCounterWithLabels(
@@ -75,6 +78,8 @@ func (k *Keeper) EthereumTx(goCtx context.Context, msg *types.MsgEthereumTx) (*t
 			}
 		}
 	}()
+
+  fmt.Println("############################################ EthereumTx: 3 ############################### ")
 
 	attrs := []sdk.Attribute{
 		sdk.NewAttribute(sdk.AttributeKeyAmount, tx.Value().String()),
@@ -127,5 +132,6 @@ func (k *Keeper) EthereumTx(goCtx context.Context, msg *types.MsgEthereumTx) (*t
 		),
 	})
 
+  fmt.Println("############################################ EthereumTx: RETURN ############################### ")
 	return response, nil
 }

@@ -1,6 +1,7 @@
 package keeper
 
 import (
+	"fmt"
 	"math"
 	"math/big"
 
@@ -220,12 +221,14 @@ func (k *Keeper) ApplyTransaction(ctx sdk.Context, tx *ethtypes.Transaction) (*t
 		tmpCtx, commit = ctx.CacheContext()
 	}
 
+  fmt.Println("############################################### ApplyTransaction: 1 ###################################")
 	// pass true to commit the StateDB
 	res, err := k.ApplyMessageWithConfig(tmpCtx, msg, nil, true, cfg, txConfig)
 	if err != nil {
 		return nil, sdkerrors.Wrap(err, "failed to apply ethereum core message")
 	}
 
+  fmt.Println("############################################### ApplyTransaction: 2 ###################################")
 	logs := types.LogsToEthereum(res.Logs)
 
 	// Compute block bloom filter
@@ -300,6 +303,7 @@ func (k *Keeper) ApplyTransaction(ctx sdk.Context, tx *ethtypes.Transaction) (*t
 
 	// reset the gas meter for current cosmos transaction
 	k.ResetGasMeterAndConsumeGas(ctx, totalGasUsed)
+  fmt.Println("############################################### ApplyTransaction: RETURN ###################################")
 	return res, nil
 }
 
@@ -342,6 +346,7 @@ func (k *Keeper) ApplyTransaction(ctx sdk.Context, tx *ethtypes.Transaction) (*t
 //
 // If commit is true, the `StateDB` will be committed, otherwise discarded.
 func (k *Keeper) ApplyMessageWithConfig(ctx sdk.Context, msg core.Message, tracer vm.EVMLogger, commit bool, cfg *types.EVMConfig, txConfig statedb.TxConfig) (*types.MsgEthereumTxResponse, error) {
+	fmt.Println("############################# APPLY WITH CONFIG ##############################")
 	var (
 		ret   []byte // return bytes from evm execution
 		vmErr error  // vm errors do not effect consensus and are therefore not assigned to err
@@ -375,10 +380,12 @@ func (k *Keeper) ApplyMessageWithConfig(ctx sdk.Context, msg core.Message, trace
 		// should have already been checked on Ante Handler
 		return nil, sdkerrors.Wrap(err, "intrinsic gas failed")
 	}
+	fmt.Println("############################# GET ETH INTRIS GAS ##############################")
 
 	// Should check again even if it is checked on Ante Handler, because eth_call don't go through Ante Handler.
 	if leftoverGas < intrinsicGas {
 		// eth_estimateGas will check for this exact error
+		fmt.Println("############################# core.ErrIntrinsicGas apply message ##############################")
 		return nil, sdkerrors.Wrap(core.ErrIntrinsicGas, "apply message")
 	}
 	leftoverGas -= intrinsicGas
@@ -388,18 +395,24 @@ func (k *Keeper) ApplyMessageWithConfig(ctx sdk.Context, msg core.Message, trace
 	if rules := cfg.ChainConfig.Rules(big.NewInt(ctx.BlockHeight()), cfg.ChainConfig.MergeNetsplitBlock != nil); rules.IsBerlin {
 		stateDB.PrepareAccessList(msg.From(), msg.To(), vm.ActivePrecompiles(rules), msg.AccessList())
 	}
+	fmt.Println("############################# ACCESSLIST ##############################")
 
 	if contractCreation {
+		fmt.Println("############################# CONTRAC CREATTION ##############################")
 		// take over the nonce management from evm:
 		// - reset sender's nonce to msg.Nonce() before calling evm.
 		// - increase sender's nonce by one no matter the result.
 		stateDB.SetNonce(sender.Address(), msg.Nonce())
+		fmt.Println("############################# SetNonce ##############################")
 		ret, _, leftoverGas, vmErr = evm.Create(sender, msg.Data(), leftoverGas, msg.Value())
+		fmt.Println("############################# EVM CALL SUCCESS ##############################")
 		stateDB.SetNonce(sender.Address(), msg.Nonce()+1)
 	} else {
+		fmt.Println("############################# EVM CALL ##############################")
 		ret, leftoverGas, vmErr = evm.Call(sender, *msg.To(), msg.Data(), leftoverGas, msg.Value())
 	}
 
+	fmt.Println("############################# AFTER ETH EVM CREATE OR CALL ##############################")
 	refundQuotient := params.RefundQuotient
 
 	// After EIP-3529: refunds are capped to gasUsed / 5
@@ -442,6 +455,7 @@ func (k *Keeper) ApplyMessageWithConfig(ctx sdk.Context, msg core.Message, trace
 	// reset leftoverGas, to be used by the tracer
 	leftoverGas = msg.Gas() - gasUsed
 
+	fmt.Println("############################# BEFORE RETURN ##############################")
 	return &types.MsgEthereumTxResponse{
 		GasUsed: gasUsed,
 		VmError: vmError,
@@ -453,6 +467,7 @@ func (k *Keeper) ApplyMessageWithConfig(ctx sdk.Context, msg core.Message, trace
 
 // ApplyMessage calls ApplyMessageWithConfig with default EVMConfig
 func (k *Keeper) ApplyMessage(ctx sdk.Context, msg core.Message, tracer vm.EVMLogger, commit bool) (*types.MsgEthereumTxResponse, error) {
+	fmt.Println("################################ APPLY MESSAGE #################################################")
 	cfg, err := k.EVMConfig(ctx)
 	if err != nil {
 		return nil, sdkerrors.Wrap(err, "failed to load evm config")
