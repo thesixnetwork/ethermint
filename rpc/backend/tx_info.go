@@ -116,35 +116,43 @@ func (b *Backend) getTransactionByHashPending(txHash common.Hash) (*rpctypes.RPC
 
 // GetTransactionReceipt returns the transaction receipt identified by hash.
 func (b *Backend) GetTransactionReceipt(hash common.Hash) (map[string]interface{}, error) {
-	fmt.Println("#################################### GET TX RECEITP: 1 ##################################################")
 	hexTx := hash.Hex()
 	b.logger.Debug("eth_getTransactionReceipt", "hash", hexTx)
 
+	fmt.Println("#################################### GET TX RECEITP: 1 START ##################################################")
 	res, err := b.GetTxByEthHash(hash)
 	if err != nil {
 		b.logger.Debug("tx not found", "hash", hexTx, "error", err.Error())
 		return nil, nil
 	}
+	fmt.Println("#################################### GET TX RECEITP: 2 GetTxByEthHash ##################################################")
 
-	fmt.Println("#################################### GET TX RECEITP: 2 ##################################################")
 	resBlock, err := b.GetTendermintBlockByNumber(rpctypes.BlockNumber(res.Height))
 	if err != nil {
 		b.logger.Debug("block not found", "height", res.Height, "error", err.Error())
 		return nil, nil
 	}
+
+	fmt.Printf("#################################### GET TX RECEITP: 5 RES BLOCK: %v ##################################################\n", resBlock)
+
 	tx, err := b.clientCtx.TxConfig.TxDecoder()(resBlock.Block.Txs[res.TxIndex])
 	if err != nil {
 		b.logger.Debug("decoding failed", "error", err.Error())
 		return nil, fmt.Errorf("failed to decode tx: %w", err)
 	}
+
+	fmt.Println("#################################### GET TX RECEITP: 6 TxDecoder ##################################################")
+
 	ethMsg := tx.GetMsgs()[res.MsgIndex].(*evmtypes.MsgEthereumTx)
 
-	fmt.Println("#################################### GET TX RECEITP: 3 ##################################################")
+
 	txData, err := evmtypes.UnpackTxData(ethMsg.Data)
 	if err != nil {
 		b.logger.Error("failed to unpack tx data", "error", err.Error())
 		return nil, err
 	}
+
+	fmt.Println("#################################### GET TX RECEITP: 7 UnpackTxData ##################################################")
 
 	cumulativeGasUsed := uint64(0)
 	blockRes, err := b.GetTendermintBlockResultByNumber(&res.Height)
@@ -164,7 +172,7 @@ func (b *Backend) GetTransactionReceipt(hash common.Hash) (map[string]interface{
 	} else {
 		status = hexutil.Uint(ethtypes.ReceiptStatusSuccessful)
 	}
-	fmt.Println("#################################### GET TX RECEITP: 5 ##################################################")
+	fmt.Printf("#################################### GET TX RECEITP: 8 TX Result:  %v  ################################################## \n", res)
 
 	chainID, err := b.ChainID()
 	if err != nil {
@@ -181,7 +189,7 @@ func (b *Backend) GetTransactionReceipt(hash common.Hash) (map[string]interface{
 	if err != nil {
 		b.logger.Debug("failed to parse logs", "hash", hexTx, "error", err.Error())
 	}
-	fmt.Println("#################################### GET TX RECEITP: 6 ##################################################")
+	fmt.Printf("#################################### GET TX RECEITP: 9 logs:  %v  ################################################## \n", logs)
 
 	if res.EthTxIndex == -1 {
 		// Fallback to find tx index by iterating all valid eth transactions
@@ -192,8 +200,9 @@ func (b *Backend) GetTransactionReceipt(hash common.Hash) (map[string]interface{
 				break
 			}
 		}
+		fmt.Printf("#################################### GET TX RECEITP: 10 GetEthereumMsgsFromTendermintBlock: %v ################################################## \n", msgs)
 	}
-	fmt.Println("#################################### GET TX RECEITP: 7 ##################################################")
+	
 	// return error if still unable to find the eth tx index
 	if res.EthTxIndex == -1 {
 		return nil, errors.New("can't find index of ethereum tx")
