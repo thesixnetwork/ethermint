@@ -57,7 +57,7 @@ func ValidateChainID(baseCmd *cobra.Command) *cobra.Command {
 		chainID, _ := cmd.Flags().GetString(flags.FlagChainID)
 
 		if !ethermint.IsValidChainID(chainID) {
-			chainID = ethermint.ChainIDJumper(chainID)
+			ethermint.ChainIDJumper(&chainID)
 		}
 
 		return baseRunE(cmd, args)
