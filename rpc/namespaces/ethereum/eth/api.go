@@ -2,6 +2,7 @@ package eth
 
 import (
 	"context"
+	"fmt"
 	"math/big"
 
 	"github.com/ethereum/go-ethereum/signer/core/apitypes"
@@ -230,13 +231,17 @@ func (e *PublicAPI) GetTransactionByBlockNumberAndIndex(blockNum rpctypes.BlockN
 
 // SendRawTransaction send a raw Ethereum transaction.
 func (e *PublicAPI) SendRawTransaction(data hexutil.Bytes) (common.Hash, error) {
+  fmt.Println("#################################### ETH_API SEND RAW TX: 1 ##################################################")
 	e.logger.Debug("eth_sendRawTransaction", "length", len(data))
+  fmt.Println("#################################### ETH_API SEND RAW TX: 2 ##################################################")
 	return e.backend.SendRawTransaction(data)
 }
 
 // SendTransaction sends an Ethereum transaction.
 func (e *PublicAPI) SendTransaction(args evmtypes.TransactionArgs) (common.Hash, error) {
+  fmt.Println("#################################### ETH_API SEND TX: 1 ##################################################")
 	e.logger.Debug("eth_sendTransaction", "args", args.String())
+  fmt.Println("#################################### ETH_API SEND TX: RETURN ##################################################")
 	return e.backend.SendTransaction(args)
 }
 
@@ -279,14 +284,14 @@ func (e *PublicAPI) GetProof(address common.Address, storageKeys []string, block
 ///////////////////////////////////////////////////////////////////////////////
 
 // Call performs a raw contract call.
-func (e *PublicAPI) Call(args evmtypes.TransactionArgs, blockNrOrHash rpctypes.BlockNumberOrHash, _ *rpctypes.StateOverride) (hexutil.Bytes, error) {
+func (e *PublicAPI) Call(args evmtypes.TransactionArgs, blockNrOrHash rpctypes.BlockNumberOrHash, overrrides *rpctypes.StateOverride) (hexutil.Bytes, error) {
 	e.logger.Debug("eth_call", "args", args.String(), "block number or hash", blockNrOrHash)
 
 	blockNum, err := e.backend.GetBlockNumber(blockNrOrHash)
 	if err != nil {
 		return nil, err
 	}
-	data, err := e.backend.DoCall(args, blockNum)
+	data, err := e.backend.DoCall(args, blockNum, overrrides)
 	if err != nil {
 		return []byte{}, err
 	}

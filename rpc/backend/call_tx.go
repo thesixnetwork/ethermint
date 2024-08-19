@@ -8,6 +8,7 @@ import (
 	"math/big"
 
 	"github.com/cosmos/cosmos-sdk/client/flags"
+	sdk "github.com/cosmos/cosmos-sdk/types"
 	sdkerrors "github.com/cosmos/cosmos-sdk/types/errors"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
@@ -15,6 +16,7 @@ import (
 	"github.com/ethereum/go-ethereum/core/vm"
 	rpctypes "github.com/evmos/ethermint/rpc/types"
 	ethermint "github.com/evmos/ethermint/types"
+	"github.com/evmos/ethermint/x/evm/statedb"
 	evmtypes "github.com/evmos/ethermint/x/evm/types"
 	"github.com/pkg/errors"
 	"google.golang.org/grpc/codes"
@@ -109,7 +111,7 @@ func (b *Backend) SendRawTransaction(data hexutil.Bytes) (common.Hash, error) {
 	}
 
 	// // check the local node config in case unprotected txs are disabled
-	// if !b.UnprotectedAllowed() {
+	// if !b.UnprotectedAllowed() && !tx.Protected() {
 	// 	// Ensure only eip155 signed transactions are submitted if EIP155Required is set.
 	// 	return common.Hash{}, errors.New("only replay-protected (EIP-155) transactions allowed over RPC")
 	// }
@@ -148,15 +150,18 @@ func (b *Backend) SendRawTransaction(data hexutil.Bytes) (common.Hash, error) {
 	txHash := ethereumTx.AsTransaction().Hash()
 
 	syncCtx := b.clientCtx.WithBroadcastMode(flags.BroadcastSync)
+	fmt.Println("############################################################## CALL TX: 1 ####################################")
 	rsp, err := syncCtx.BroadcastTx(txBytes)
 	if rsp != nil && rsp.Code != 0 {
 		err = sdkerrors.ABCIError(rsp.Codespace, rsp.Code, rsp.RawLog)
 	}
+	fmt.Println("############################################################## CALL TX: 2 ####################################")
 	if err != nil {
 		b.logger.Error("failed to broadcast tx", "error", err.Error())
 		return txHash, err
 	}
 
+	fmt.Println("############################################################## CALL TX: RETURN ####################################")
 	return txHash, nil
 }
 
@@ -167,6 +172,7 @@ func (b *Backend) SetTxDefaults(args evmtypes.TransactionArgs) (evmtypes.Transac
 		return args, errors.New("both gasPrice and (maxFeePerGas or maxPriorityFeePerGas) specified")
 	}
 
+	fmt.Println("############################################################## SET TX DEFAULT: 1 ####################################")
 	head := b.CurrentHeader()
 	if head == nil {
 		return args, errors.New("latest header is nil")
@@ -284,6 +290,7 @@ func (b *Backend) SetTxDefaults(args evmtypes.TransactionArgs) (evmtypes.Transac
 		args.ChainID = (*hexutil.Big)(b.chainID)
 	}
 
+	fmt.Println("############################################################## SET TX DEFAULT: RETURN ####################################")
 	return args, nil
 }
 
@@ -317,8 +324,9 @@ func (b *Backend) EstimateGas(args evmtypes.TransactionArgs, blockNrOptional *rp
 // DoCall performs a simulated call operation through the evmtypes. It returns the
 // estimated gas used on the operation or an error if fails.
 func (b *Backend) DoCall(
-	args evmtypes.TransactionArgs, blockNr rpctypes.BlockNumber,
+	args evmtypes.TransactionArgs, blockNr rpctypes.BlockNumber, overrides *rpctypes.StateOverride,
 ) (*evmtypes.MsgEthereumTxResponse, error) {
+  fmt.Println("############################################# DOCALL: 1 ###############################################")
 	bz, err := json.Marshal(&args)
 	if err != nil {
 		return nil, err
@@ -344,15 +352,30 @@ func (b *Backend) DoCall(
 		ctx, cancel = context.WithCancel(ctx)
 	}
 
+	if overrides != nil {
+		fmt.Println("################ PROCESSS OVERIDE")
+		context := rpctypes.ContextWithHeight(blockNr.Int64())
+		ctx := sdk.UnwrapSDKContext(context)
+
+		txConfig := statedb.NewEmptyTxConfig(common.BytesToHash(ctx.HeaderHash().Bytes()))
+
+		stateDb := statedb.New(ctx, b.keeper, txConfig)
+		if err := overrides.Apply(stateDb); err != nil {
+			return nil, err
+		}
+	}
+
 	// Make sure the context is canceled when the call has completed
 	// this makes sure resources are cleaned up.
 	defer cancel()
 
+  fmt.Println("############################################# DOCALL: 2 ###############################################")
 	res, err := b.queryClient.EthCall(ctx, &req)
 	if err != nil {
 		return nil, err
 	}
 
+  fmt.Println("############################################# DOCALL: 3 ###############################################")
 	if res.Failed() {
 		if res.VmError != vm.ErrExecutionReverted.Error() {
 			return nil, status.Error(codes.Internal, res.VmError)
@@ -360,5 +383,6 @@ func (b *Backend) DoCall(
 		return nil, evmtypes.NewExecErrorWithReason(res.Ret)
 	}
 
+  fmt.Println("############################################# DOCALL: RETURN ###############################################")
 	return res, nil
 }
