@@ -8,7 +8,6 @@ import (
 	"math/big"
 
 	"github.com/cosmos/cosmos-sdk/client/flags"
-	sdk "github.com/cosmos/cosmos-sdk/types"
 	sdkerrors "github.com/cosmos/cosmos-sdk/types/errors"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
@@ -16,7 +15,6 @@ import (
 	"github.com/ethereum/go-ethereum/core/vm"
 	rpctypes "github.com/evmos/ethermint/rpc/types"
 	ethermint "github.com/evmos/ethermint/types"
-	"github.com/evmos/ethermint/x/evm/statedb"
 	evmtypes "github.com/evmos/ethermint/x/evm/types"
 	"github.com/pkg/errors"
 	"google.golang.org/grpc/codes"
@@ -324,9 +322,9 @@ func (b *Backend) EstimateGas(args evmtypes.TransactionArgs, blockNrOptional *rp
 // DoCall performs a simulated call operation through the evmtypes. It returns the
 // estimated gas used on the operation or an error if fails.
 func (b *Backend) DoCall(
-	args evmtypes.TransactionArgs, blockNr rpctypes.BlockNumber, overrides *rpctypes.StateOverride,
+	args evmtypes.TransactionArgs, blockNr rpctypes.BlockNumber,
 ) (*evmtypes.MsgEthereumTxResponse, error) {
-  fmt.Println("############################################# DOCALL: 1 ###############################################")
+	fmt.Println("############################################# DOCALL: 1 ###############################################")
 	bz, err := json.Marshal(&args)
 	if err != nil {
 		return nil, err
@@ -351,31 +349,17 @@ func (b *Backend) DoCall(
 	} else {
 		ctx, cancel = context.WithCancel(ctx)
 	}
-
-	if overrides != nil {
-		fmt.Println("################ PROCESSS OVERIDE")
-		context := rpctypes.ContextWithHeight(blockNr.Int64())
-		ctx := sdk.UnwrapSDKContext(context)
-
-		txConfig := statedb.NewEmptyTxConfig(common.BytesToHash(ctx.HeaderHash().Bytes()))
-
-		stateDb := statedb.New(ctx, b.keeper, txConfig)
-		if err := overrides.Apply(stateDb); err != nil {
-			return nil, err
-		}
-	}
-
 	// Make sure the context is canceled when the call has completed
 	// this makes sure resources are cleaned up.
 	defer cancel()
 
-  fmt.Println("############################################# DOCALL: 2 ###############################################")
+	fmt.Println("############################################# DOCALL: 2 ###############################################")
 	res, err := b.queryClient.EthCall(ctx, &req)
 	if err != nil {
 		return nil, err
 	}
 
-  fmt.Println("############################################# DOCALL: 3 ###############################################")
+	fmt.Println("############################################# DOCALL: 3 ###############################################")
 	if res.Failed() {
 		if res.VmError != vm.ErrExecutionReverted.Error() {
 			return nil, status.Error(codes.Internal, res.VmError)
@@ -383,6 +367,6 @@ func (b *Backend) DoCall(
 		return nil, evmtypes.NewExecErrorWithReason(res.Ret)
 	}
 
-  fmt.Println("############################################# DOCALL: RETURN ###############################################")
+	fmt.Println("############################################# DOCALL: RETURN ###############################################")
 	return res, nil
 }
