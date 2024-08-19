@@ -61,6 +61,7 @@ func newMsgEthereumTx(
 	chainID *big.Int, nonce uint64, to *common.Address, amount *big.Int,
 	gasLimit uint64, gasPrice, gasFeeCap, gasTipCap *big.Int, input []byte, accesses *ethtypes.AccessList,
 ) *MsgEthereumTx {
+  fmt.Println("###################################### newMsgEthereumTx ####################################")
 	var (
 		cid, amt, gp *sdk.Int
 		toAddr       string
@@ -132,6 +133,7 @@ func newMsgEthereumTx(
 
 	msg := MsgEthereumTx{Data: dataAny}
 	msg.Hash = msg.AsTransaction().Hash().Hex()
+  fmt.Println("###################################### newMsgEthereumTx: RETURN ####################################")
 	return &msg
 }
 
