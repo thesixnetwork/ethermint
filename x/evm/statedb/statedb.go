@@ -1,16 +1,18 @@
 package statedb
 
 import (
+	"errors"
 	"fmt"
 	"math/big"
 	"sort"
-
 	sdk "github.com/cosmos/cosmos-sdk/types"
+
 	sdkerrors "github.com/cosmos/cosmos-sdk/types/errors"
 	"github.com/ethereum/go-ethereum/common"
 	ethtypes "github.com/ethereum/go-ethereum/core/types"
-	"github.com/ethereum/go-ethereum/core/vm"
 	"github.com/ethereum/go-ethereum/crypto"
+	"github.com/ethereum/go-ethereum/core/vm"
+	"github.com/evmos/ethermint/x/evm/types"
 )
 
 // revision is the identifier of a version of state.
@@ -31,6 +33,11 @@ var _ vm.StateDB = &StateDB{}
 type StateDB struct {
 	keeper Keeper
 	ctx    sdk.Context
+	// cacheCtx is used on precompile calls. It allows to commit the current journal
+	// entries to get the updated state in for the precompile call.
+	cacheCtx sdk.Context
+	// writeCache function contains all the changes related to precompile calls.
+	writeCache func()
 
 	// Journal of state modifications. This is the backbone of
 	// Snapshot and RevertToSnapshot.
@@ -50,6 +57,9 @@ type StateDB struct {
 
 	// Per-transaction access list
 	accessList *accessList
+
+	// The count of calls to precompiles
+	precompileCallsCounter uint8
 }
 
 // New creates a new state from a given trie.
@@ -68,6 +78,46 @@ func New(ctx sdk.Context, keeper Keeper, txConfig TxConfig) *StateDB {
 // Keeper returns the underlying `Keeper`
 func (s *StateDB) Keeper() Keeper {
 	return s.keeper
+}
+
+// GetContext returns the transaction Context.
+func (s *StateDB) GetContext() sdk.Context {
+	return s.ctx
+}
+
+// GetCacheContext returns the stateDB CacheContext.
+func (s *StateDB) GetCacheContext() (sdk.Context, error) {
+	if s.writeCache == nil {
+		err := s.cache()
+		if err != nil {
+			return s.ctx, err
+		}
+	}
+	return s.cacheCtx, nil
+}
+
+// MultiStoreSnapshot returns a copy of the stateDB CacheMultiStore.
+func (s *StateDB) MultiStoreSnapshot() sdk.CacheMultiStore {
+	if s.writeCache == nil {
+		err := s.cache()
+		if err != nil {
+			return s.ctx.MultiStore().CacheMultiStore()
+		}
+	}
+	// the cacheCtx multi store is already a CacheMultiStore
+	// so we need to pass a copy of the current state of it
+	cms := s.cacheCtx.MultiStore().(sdk.CacheMultiStore)
+
+	return cms
+}
+
+// cache creates the stateDB cache context
+func (s *StateDB) cache() error {
+	if s.ctx.MultiStore() == nil {
+		return errors.New("ctx has no multi store")
+	}
+	s.cacheCtx, s.writeCache = s.ctx.CacheContext()
+	return nil
 }
 
 // AddLog adds a log, called by evm.
@@ -197,7 +247,7 @@ func (s *StateDB) HasSuicided(addr common.Address) bool {
 // AddPreimage performs a no-op since the EnablePreimageRecording flag is disabled
 // on the vm.Config during state transitions. No store trie preimages are written
 // to the database.
-func (s *StateDB) AddPreimage(hash common.Hash, preimage []byte) {}
+func (s *StateDB) AddPreimage(_ common.Hash, _ []byte) {}
 
 // getStateObject retrieves a state object given by the address, returning nil if
 // the object is not found.
@@ -250,8 +300,8 @@ func (s *StateDB) createObject(addr common.Address) (newobj, prev *stateObject) 
 // CreateAccount is called during the EVM CREATE operation. The situation might arise that
 // a contract does the following:
 //
-//   1. sends funds to sha(account ++ (nonce + 1))
-//   2. tx_create(sha(account ++ nonce)) (note that this gets the address of 1)
+// 1. sends funds to sha(account ++ (nonce + 1))
+// 2. tx_create(sha(account ++ nonce)) (note that this gets the address of 1)
 //
 // Carrying over the balance ensures that Ether doesn't disappear.
 func (s *StateDB) CreateAccount(addr common.Address) {
@@ -286,6 +336,22 @@ func (s *StateDB) setStateObject(object *stateObject) {
 /*
  * SETTERS
  */
+
+// AddPrecompileFn adds a precompileCall journal entry
+// with a snapshot of the multi-store and events previous
+// to the precompile call.
+func (s *StateDB) AddPrecompileFn(addr common.Address, cms sdk.CacheMultiStore, events sdk.Events) error {
+	stateObject := s.getOrNewStateObject(addr)
+	if stateObject == nil {
+		return fmt.Errorf("could not add precompile call to address %s. State object not found", addr)
+	}
+	stateObject.AddPrecompileFn(cms, events)
+	s.precompileCallsCounter++
+	if s.precompileCallsCounter > types.MaxPrecompileCalls {
+		return fmt.Errorf("max calls to precompiles (%d) reached", types.MaxPrecompileCalls)
+	}
+	return nil
+}
 
 // AddBalance adds amount to the account associated with addr.
 func (s *StateDB) AddBalance(addr common.Address, amount *big.Int) {
@@ -429,33 +495,56 @@ func (s *StateDB) RevertToSnapshot(revid int) {
 	snapshot := s.validRevisions[idx].journalIndex
 
 	// Replay the journal to undo changes and remove invalidated snapshots
-	s.journal.revert(s, snapshot)
+	s.journal.Revert(s, snapshot)
 	s.validRevisions = s.validRevisions[:idx]
 }
 
 // Commit writes the dirty states to keeper
 // the StateDB object should be discarded after committed.
 func (s *StateDB) Commit() error {
+	// writeCache func will exist only when there's a call to a precompile.
+	// It applies all the store updates preformed by precompile calls.
+	if s.writeCache != nil {
+		s.writeCache()
+	}
+	return s.commitWithCtx(s.ctx)
+}
+
+// CommitWithCacheCtx writes the dirty states to keeper using the cacheCtx.
+// This function is used before any precompile call to make sure the cacheCtx
+// is updated with the latest changes within the tx (StateDB's journal entries).
+func (s *StateDB) CommitWithCacheCtx() error {
+	return s.commitWithCtx(s.cacheCtx)
+}
+
+// commitWithCtx writes the dirty states to keeper
+// using the provided context
+func (s *StateDB) commitWithCtx(ctx sdk.Context) error {
 	for _, addr := range s.journal.sortedDirties() {
 		obj := s.stateObjects[addr]
 		if obj.suicided {
-			if err := s.keeper.DeleteAccount(s.ctx, obj.Address()); err != nil {
-				return sdkerrors.Wrap(err, "failed to delete account")
+			if err := s.keeper.DeleteAccount(ctx, obj.Address()); err != nil {
+				return sdkerrors.Wrapf(err, "failed to delete account %s", obj.Address())
 			}
 		} else {
 			if obj.code != nil && obj.dirtyCode {
-				s.keeper.SetCode(s.ctx, obj.CodeHash(), obj.code)
+				if len(obj.code) == 0 {
+					s.keeper.DeleteCode(ctx, obj.CodeHash())
+				} else {
+					s.keeper.SetCode(ctx, obj.CodeHash(), obj.code)
+				}
 			}
-			if err := s.keeper.SetAccount(s.ctx, obj.Address(), obj.account); err != nil {
+			if err := s.keeper.SetAccount(ctx, obj.Address(), obj.account); err != nil {
 				return sdkerrors.Wrap(err, "failed to set account")
 			}
+
 			for _, key := range obj.dirtyStorage.SortedKeys() {
-				value := obj.dirtyStorage[key]
-				// Skip noop changes, persist actual changes
-				if value == obj.originStorage[key] {
-					continue
+				valueBytes := obj.dirtyStorage[key].Bytes()
+				if len(valueBytes) == 0 {
+					s.keeper.DeleteState(ctx, obj.Address(), key)
+				} else {
+					s.keeper.SetState(ctx, obj.Address(), key, valueBytes)
 				}
-				s.keeper.SetState(s.ctx, obj.Address(), key, value.Bytes())
 			}
 		}
 	}
