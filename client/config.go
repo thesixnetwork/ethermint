@@ -1,7 +1,6 @@
 package client
 
 import (
-	"fmt"
 	"os"
 	"path"
 
@@ -58,7 +57,7 @@ func ValidateChainID(baseCmd *cobra.Command) *cobra.Command {
 		chainID, _ := cmd.Flags().GetString(flags.FlagChainID)
 
 		if !ethermint.IsValidChainID(chainID) {
-			return fmt.Errorf("invalid chain-id format: %s", chainID)
+			ethermint.ChainIDJumper(&chainID)
 		}
 
 		return baseRunE(cmd, args)

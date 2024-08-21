@@ -126,7 +126,8 @@ func StateFn(cdc codec.JSONCodec, simManager *module.SimulationManager) simtypes
 	) (appState json.RawMessage, simAccs []simtypes.Account, chainID string, genesisTimestamp time.Time) {
 		appStateFn := simapp.AppStateFn(cdc, simManager)
 		appState, simAccs, chainID, genesisTimestamp = appStateFn(r, accs, config)
-
+		// replace chain id with ethermint format such as chainId_666-1
+		ethermint.ChainIDJumper(&chainID)
 		rawState := make(map[string]json.RawMessage)
 		err := json.Unmarshal(appState, &rawState)
 		if err != nil {

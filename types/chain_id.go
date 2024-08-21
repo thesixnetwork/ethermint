@@ -23,7 +23,7 @@ func IsValidChainID(chainID string) bool {
 	if len(chainID) > 48 {
 		return false
 	}
-
+	// chainID = fmt.Sprintf("%s_%d-%d", chainID, 666, 1)
 	return ethermintChainID.MatchString(chainID)
 }
 
@@ -34,7 +34,7 @@ func ParseChainID(chainID string) (*big.Int, error) {
 	if len(chainID) > 48 {
 		return nil, sdkerrors.Wrapf(ErrInvalidChainID, "chain-id '%s' cannot exceed 48 chars", chainID)
 	}
-
+	ChainIDJumper(&chainID)
 	matches := ethermintChainID.FindStringSubmatch(chainID)
 	if matches == nil || len(matches) != 4 || matches[1] == "" {
 		return nil, sdkerrors.Wrapf(ErrInvalidChainID, "%s: %v", chainID, matches)

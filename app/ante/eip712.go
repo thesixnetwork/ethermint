@@ -111,6 +111,8 @@ func (svd Eip712SigVerificationDecorator) AnteHandle(ctx sdk.Context, tx sdk.Tx,
 	genesis := ctx.BlockHeight() == 0
 	chainID := ctx.ChainID()
 
+	ethermint.ChainIDJumper(&chainID)
+
 	var accNum uint64
 	if !genesis {
 		accNum = acc.GetAccountNumber()
