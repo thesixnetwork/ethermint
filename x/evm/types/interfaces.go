@@ -27,6 +27,7 @@ type AccountKeeper interface {
 
 // BankKeeper defines the expected interface needed to retrieve account balances.
 type BankKeeper interface {
+	GetSupply(ctx sdk.Context, denom string) sdk.Coin
 	GetBalance(ctx sdk.Context, addr sdk.AccAddress, denom string) sdk.Coin
 	SendCoinsFromModuleToAccount(ctx sdk.Context, senderModule string, recipientAddr sdk.AccAddress, amt sdk.Coins) error
 	// SendCoinsFromModuleToModule(ctx sdk.Context, senderModule, recipientModule string, amt sdk.Coins) error
@@ -44,6 +45,7 @@ type StakingKeeper interface {
 // FeeMarketKeeper
 type FeeMarketKeeper interface {
 	GetBaseFee(ctx sdk.Context) *big.Int
+	GetLegacyBaseFee(ctx sdk.Context) *big.Int
 	GetParams(ctx sdk.Context) feemarkettypes.Params
 	AddTransientGasWanted(ctx sdk.Context, gasWanted uint64) (uint64, error)
 }

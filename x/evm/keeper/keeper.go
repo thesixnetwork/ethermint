@@ -303,6 +303,19 @@ func (k Keeper) GetBaseFee(ctx sdk.Context, ethCfg *params.ChainConfig) *big.Int
 	return baseFee
 }
 
+
+func (k Keeper) GetLegacyBaseFee(ctx sdk.Context, ethCfg *params.ChainConfig) *big.Int {
+	if !types.IsLondon(ethCfg, ctx.BlockHeight()) {
+		return nil
+	}
+	baseFee := k.feeMarketKeeper.GetLegacyBaseFee(ctx)
+	if baseFee == nil {
+		// return 0 if feemarket not enabled.
+		baseFee = big.NewInt(0)
+	}
+	return baseFee
+}
+
 // GetMinGasMultiplier returns the MinGasMultiplier param from the fee market module
 func (k Keeper) GetMinGasMultiplier(ctx sdk.Context) sdk.Dec {
 	fmkParmas := k.feeMarketKeeper.GetParams(ctx)
