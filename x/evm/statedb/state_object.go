@@ -7,10 +7,11 @@ import (
 	"math/big"
 	"sort"
 
-	sdk "github.com/cosmos/cosmos-sdk/types"
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/evmos/ethermint/x/evm/types"
+	"github.com/ethereum/go-ethereum/crypto"
 )
+
+var emptyCodeHash = crypto.Keccak256(nil)
 
 // Account is the Ethereum consensus representation of accounts.
 // These objects are stored in the storage of auth module.
@@ -24,13 +25,13 @@ type Account struct {
 func NewEmptyAccount() *Account {
 	return &Account{
 		Balance:  new(big.Int),
-		CodeHash: types.EmptyCodeHash,
+		CodeHash: emptyCodeHash,
 	}
 }
 
 // IsContract returns if the account contains contract code.
 func (acct Account) IsContract() bool {
-	return !bytes.Equal(acct.CodeHash, types.EmptyCodeHash)
+	return !bytes.Equal(acct.CodeHash, emptyCodeHash)
 }
 
 // Storage represents in-memory cache/buffer of contract storage.
@@ -38,11 +39,9 @@ type Storage map[common.Hash]common.Hash
 
 // SortedKeys sort the keys for deterministic iteration
 func (s Storage) SortedKeys() []common.Hash {
-	keys := make([]common.Hash, len(s))
-	i := 0
+	keys := make([]common.Hash, 0, len(s))
 	for k := range s {
-		keys[i] = k
-		i++
+		keys = append(keys, k)
 	}
 	sort.Slice(keys, func(i, j int) bool {
 		return bytes.Compare(keys[i].Bytes(), keys[j].Bytes()) < 0
@@ -50,7 +49,7 @@ func (s Storage) SortedKeys() []common.Hash {
 	return keys
 }
 
-// stateObject is the state of an account
+// stateObject is the state of an acount
 type stateObject struct {
 	db *StateDB
 
@@ -60,6 +59,11 @@ type stateObject struct {
 	// state storage
 	originStorage Storage
 	dirtyStorage  Storage
+	fakeStorage   Storage // Fake storage which constructed by caller for debugging purpose.
+
+	// transientStorage is an in memory storage of the latest committed entries in the current transaction execution.
+	// It is only used when multiple commits are made within the same transaction execution.
+	transientStorage Storage
 
 	address common.Address
 
@@ -74,20 +78,21 @@ func newObject(db *StateDB, address common.Address, account Account) *stateObjec
 		account.Balance = new(big.Int)
 	}
 	if account.CodeHash == nil {
-		account.CodeHash = types.EmptyCodeHash
+		account.CodeHash = emptyCodeHash
 	}
 	return &stateObject{
-		db:            db,
-		address:       address,
-		account:       account,
-		originStorage: make(Storage),
-		dirtyStorage:  make(Storage),
+		db:               db,
+		address:          address,
+		account:          account,
+		originStorage:    make(Storage),
+		dirtyStorage:     make(Storage),
+		transientStorage: make(Storage),
 	}
 }
 
 // empty returns whether the account is considered empty.
 func (s *stateObject) empty() bool {
-	return s.account.Nonce == 0 && s.account.Balance.Sign() == 0 && bytes.Equal(s.account.CodeHash, types.EmptyCodeHash)
+	return s.account.Nonce == 0 && s.account.Balance.Sign() == 0 && bytes.Equal(s.account.CodeHash, emptyCodeHash)
 }
 
 func (s *stateObject) markSuicided() {
@@ -121,16 +126,6 @@ func (s *stateObject) SetBalance(amount *big.Int) {
 	s.setBalance(amount)
 }
 
-// AddPrecompileFn appends to the journal an entry
-// with a snapshot of the multi-store and events
-// previous to the precompile call
-func (s *stateObject) AddPrecompileFn(cms sdk.CacheMultiStore, events sdk.Events) {
-	s.db.journal.append(precompileCallChange{
-		multiStore: cms,
-		events:     events,
-	})
-}
-
 func (s *stateObject) setBalance(amount *big.Int) {
 	s.account.Balance = amount
 }
@@ -149,7 +144,7 @@ func (s *stateObject) Code() []byte {
 	if s.code != nil {
 		return s.code
 	}
-	if bytes.Equal(s.CodeHash(), types.EmptyCodeHash) {
+	if bytes.Equal(s.CodeHash(), emptyCodeHash) {
 		return nil
 	}
 	code := s.db.keeper.GetCode(s.db.ctx, common.BytesToHash(s.CodeHash()))
@@ -245,4 +240,22 @@ func (s *stateObject) SetState(key common.Hash, value common.Hash) {
 
 func (s *stateObject) setState(key, value common.Hash) {
 	s.dirtyStorage[key] = value
+}
+
+// SetStorage replaces the entire state storage with the given one.
+//
+// After this function is called, all original state will be ignored and state
+// lookup only happens in the fake state storage.
+//
+// Note this function should only be used for debugging purpose.
+func (s *stateObject) SetStorage(storage map[common.Hash]common.Hash) {
+	// Allocate fake storage if it's nil.
+	if s.fakeStorage == nil {
+		s.fakeStorage = make(Storage)
+	}
+	for key, value := range storage {
+		s.fakeStorage[key] = value
+	}
+	// Don't bother journal since this function should only be used for
+	// debugging and the `fake` storage won't be committed to database.
 }

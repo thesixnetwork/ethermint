@@ -40,6 +40,7 @@ import (
 	rpctypes "github.com/evmos/ethermint/rpc/types"
 	ethermint "github.com/evmos/ethermint/types"
 	evmKeeper "github.com/evmos/ethermint/x/evm/keeper"
+	"github.com/evmos/ethermint/x/evm/statedb"
 	evmtypes "github.com/evmos/ethermint/x/evm/types"
 )
 
@@ -62,6 +63,7 @@ func NewPublicAPI(
 	clientCtx client.Context,
 	backend backend.EVMBackend,
 	nonceLock *rpctypes.AddrLocker,
+	keeper    *evmKeeper.Keeper,
 ) *PublicAPI {
 	eip155ChainID, err := ethermint.ParseChainID(clientCtx.ChainID)
 	if err != nil {
@@ -103,6 +105,7 @@ func NewPublicAPI(
 		backend:      backend,
 		nonceLock:    nonceLock,
 		signer:       signer,
+		keeper: keeper,
 	}
 
 	return api
@@ -665,8 +668,21 @@ func (e *PublicAPI) Resend(ctx context.Context, args evmtypes.TransactionArgs, g
 }
 
 // Call performs a raw contract call.
-func (e *PublicAPI) Call(args evmtypes.TransactionArgs, blockNrOrHash rpctypes.BlockNumberOrHash, overrieds *rpctypes.StateOverride) (hexutil.Bytes, error) {
+func (e *PublicAPI) Call(args evmtypes.TransactionArgs, blockNrOrHash rpctypes.BlockNumberOrHash, overrides *rpctypes.StateOverride) (hexutil.Bytes, error) {
 	e.logger.Debug("eth_call", "args", args.String(), "block number or hash", blockNrOrHash)
+
+	if overrides != nil {
+		fmt.Println("################ PROCESSS OVERIDE")
+		context := rpctypes.ContextWithHeight(blockNrOrHash.BlockNumber.Int64())
+		ctx := sdk.UnwrapSDKContext(context)
+
+		txConfig := statedb.NewEmptyTxConfig(common.BytesToHash(ctx.HeaderHash().Bytes()))
+
+		stateDb := statedb.New(ctx, e.keeper, txConfig)
+		if err := overrides.Apply(stateDb); err != nil {
+			return nil, err
+		}
+	}
 
 	blockNum, err := e.getBlockNumber(blockNrOrHash)
 	if err != nil {

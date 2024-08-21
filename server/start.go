@@ -44,6 +44,8 @@ import (
 	ethdebug "github.com/evmos/ethermint/rpc/namespaces/ethereum/debug"
 	"github.com/evmos/ethermint/server/config"
 	srvflags "github.com/evmos/ethermint/server/flags"
+
+	ethermintApp "github.com/evmos/ethermint/app"
 )
 
 // StartCmd runs the service passed in, either stand-alone or in-process with
@@ -292,7 +294,7 @@ func startInProcess(ctx *server.Context, clientCtx client.Context, appCreator ty
 	}
 
 	app := appCreator(ctx.Logger, db, traceWriter, ctx.Viper)
-
+	evmKeeper := app.(*ethermintApp.EthermintApp).EvmKeeper
 	nodeKey, err := p2p.LoadOrGenNodeKey(cfg.NodeKeyFile())
 	if err != nil {
 		logger.Error("failed load or gen node key", "error", err.Error())
@@ -427,7 +429,7 @@ func startInProcess(ctx *server.Context, clientCtx client.Context, appCreator ty
 
 		tmEndpoint := "/websocket"
 		tmRPCAddr := cfg.RPC.ListenAddress
-		httpSrv, httpSrvDone, err = StartJSONRPC(ctx, clientCtx, tmRPCAddr, tmEndpoint, config)
+		httpSrv, httpSrvDone, err = StartJSONRPC(ctx, clientCtx, tmRPCAddr, tmEndpoint, config, evmKeeper)
 		if err != nil {
 			return err
 		}

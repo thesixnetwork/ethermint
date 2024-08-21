@@ -4,7 +4,7 @@ import (
 	"bytes"
 
 	"errors"
-	"maps"
+	//"maps"
 	"math/big"
 
 	sdk "github.com/cosmos/cosmos-sdk/types"
@@ -110,7 +110,7 @@ func (k MockKeeper) DeleteAccount(ctx sdk.Context, addr common.Address) error {
 }
 
 func (k MockKeeper) Clone() *MockKeeper {
-	accounts := maps.Clone(k.accounts)
-	codes := maps.Clone(k.codes)
-	return &MockKeeper{accounts, codes}
+	// accounts := maps.Clone(k.accounts)
+	// codes := maps.Clone(k.codes)
+	return &MockKeeper{}
 }
