@@ -20,6 +20,7 @@ build:
 init:
   home: "$HOME/.ethermintd"
   app:
+    log_level: trace
     api:
       enable: true
     json-rpc:

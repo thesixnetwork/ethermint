@@ -40,7 +40,6 @@ import (
 	rpctypes "github.com/evmos/ethermint/rpc/types"
 	ethermint "github.com/evmos/ethermint/types"
 	evmKeeper "github.com/evmos/ethermint/x/evm/keeper"
-	"github.com/evmos/ethermint/x/evm/statedb"
 	evmtypes "github.com/evmos/ethermint/x/evm/types"
 )
 
@@ -63,7 +62,7 @@ func NewPublicAPI(
 	clientCtx client.Context,
 	backend backend.EVMBackend,
 	nonceLock *rpctypes.AddrLocker,
-	keeper    *evmKeeper.Keeper,
+	keeper *evmKeeper.Keeper,
 ) *PublicAPI {
 	eip155ChainID, err := ethermint.ParseChainID(clientCtx.ChainID)
 	if err != nil {
@@ -105,7 +104,7 @@ func NewPublicAPI(
 		backend:      backend,
 		nonceLock:    nonceLock,
 		signer:       signer,
-		keeper: keeper,
+		keeper:       keeper,
 	}
 
 	return api
@@ -671,24 +670,11 @@ func (e *PublicAPI) Resend(ctx context.Context, args evmtypes.TransactionArgs, g
 func (e *PublicAPI) Call(args evmtypes.TransactionArgs, blockNrOrHash rpctypes.BlockNumberOrHash, overrides *rpctypes.StateOverride) (hexutil.Bytes, error) {
 	e.logger.Debug("eth_call", "args", args.String(), "block number or hash", blockNrOrHash)
 
-	if overrides != nil {
-		fmt.Println("################ PROCESSS OVERIDE")
-		context := rpctypes.ContextWithHeight(blockNrOrHash.BlockNumber.Int64())
-		ctx := sdk.UnwrapSDKContext(context)
-
-		txConfig := statedb.NewEmptyTxConfig(common.BytesToHash(ctx.HeaderHash().Bytes()))
-
-		stateDb := statedb.New(ctx, e.keeper, txConfig)
-		if err := overrides.Apply(stateDb); err != nil {
-			return nil, err
-		}
-	}
-
 	blockNum, err := e.getBlockNumber(blockNrOrHash)
 	if err != nil {
 		return nil, err
 	}
-	data, err := e.doCall(args, blockNum)
+	data, err := e.doCall(args, blockNum, overrides)
 	if err != nil {
 		return []byte{}, err
 	}
@@ -699,7 +685,7 @@ func (e *PublicAPI) Call(args evmtypes.TransactionArgs, blockNrOrHash rpctypes.B
 // DoCall performs a simulated call operation through the evmtypes. It returns the
 // estimated gas used on the operation or an error if fails.
 func (e *PublicAPI) doCall(
-	args evmtypes.TransactionArgs, blockNr rpctypes.BlockNumber,
+	args evmtypes.TransactionArgs, blockNr rpctypes.BlockNumber, overrides *rpctypes.StateOverride,
 ) (*evmtypes.MsgEthereumTxResponse, error) {
 	bz, err := json.Marshal(&args)
 	if err != nil {
@@ -714,35 +700,51 @@ func (e *PublicAPI) doCall(
 	// From ContextWithHeight: if the provided height is 0,
 	// it will return an empty context and the gRPC query will use
 	// the latest block height for querying.
-	ctx := rpctypes.ContextWithHeight(blockNr.Int64())
+	rpcCtx := rpctypes.ContextWithHeight(blockNr.Int64())
 	timeout := e.backend.RPCEVMTimeout()
 
 	// Setup context so it may be canceled the call has completed
 	// or, in case of unmetered gas, setup a context with a timeout.
 	var cancel context.CancelFunc
 	if timeout > 0 {
-		ctx, cancel = context.WithTimeout(ctx, timeout)
+		rpcCtx, cancel = context.WithTimeout(rpcCtx, timeout)
 	} else {
-		ctx, cancel = context.WithCancel(ctx)
+		rpcCtx, cancel = context.WithCancel(rpcCtx)
 	}
 
 	// Make sure the context is canceled when the call has completed
 	// this makes sure resources are cleaned up.
 	defer cancel()
 
-	res, err := e.queryClient.EthCall(ctx, &req)
-	if err != nil {
-		return nil, err
-	}
-
-	if res.Failed() {
-		if res.VmError != vm.ErrExecutionReverted.Error() {
-			return nil, status.Error(codes.Internal, res.VmError)
+	if overrides != nil {
+		res, err := e.keeper.EthCallWithStateOverride(rpcCtx, &req, overrides)
+		if err != nil {
+			return nil, err
 		}
-		return nil, evmtypes.NewExecErrorWithReason(res.Ret)
-	}
 
-	return res, nil
+		if res.Failed() {
+			if res.VmError != vm.ErrExecutionReverted.Error() {
+				return nil, status.Error(codes.Internal, res.VmError)
+			}
+			return nil, evmtypes.NewExecErrorWithReason(res.Ret)
+		}
+
+		return res, nil
+	} else {
+		res, err := e.queryClient.EthCall(rpcCtx, &req)
+		if err != nil {
+			return nil, err
+		}
+
+		if res.Failed() {
+			if res.VmError != vm.ErrExecutionReverted.Error() {
+				return nil, status.Error(codes.Internal, res.VmError)
+			}
+			return nil, evmtypes.NewExecErrorWithReason(res.Ret)
+		}
+
+		return res, nil
+	}
 }
 
 // EstimateGas returns an estimate of gas usage for the given smart contract call.
