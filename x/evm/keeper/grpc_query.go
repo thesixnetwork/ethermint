@@ -636,8 +636,6 @@ func (k Keeper) BaseFee(c context.Context, _ *types.QueryBaseFeeRequest) (*types
 	return res, nil
 }
 
-
-// EthCall implements eth_call rpc api.
 func (k Keeper) EthCallWithOverrides(c context.Context, req *types.EthCallRequest, overrides *rpctypes.StateOverride) (*types.MsgEthereumTxResponse, error) {
 	if req == nil {
 		return nil, status.Error(codes.InvalidArgument, "empty request")

@@ -717,7 +717,7 @@ func (e *PublicAPI) doCall(
 	defer cancel()
 
 	if overrides != nil {
-		res, err := e.keeper.EthCallWithStateOverride(rpcCtx, &req, overrides)
+		res, err := e.keeper.EthCallWithOverrides(rpcCtx, &req, overrides)
 		if err != nil {
 			return nil, err
 		}

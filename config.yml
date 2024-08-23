@@ -5,7 +5,7 @@ accounts:
     coins: ["5000000000000aphoton"]
   - name: faucet
     coins: ["100000000000000000000000aphoton"]
-  - address: ethm153nrw9dc9gr607nwvlgx3hu9htafmgpsqt8wsj
+  - address: ethm1kch0sdjr5tuvjh0h3a55c6l5sr6m0phjda3j76
     coins: ["100000000uatom", "100000000000000000000aphoton"]
 validator:
   name: alice
