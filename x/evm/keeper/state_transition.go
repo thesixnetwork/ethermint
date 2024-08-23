@@ -222,7 +222,7 @@ func (k *Keeper) ApplyTransaction(ctx sdk.Context, tx *ethtypes.Transaction) (*t
 	}
 
 	// pass true to commit the StateDB
-	res, err := k.ApplyMessageWithConfig(tmpCtx, msg, nil, true, cfg, txConfig, nil)
+	res, err := k.ApplyMessageWithConfig(tmpCtx, msg, nil, true, cfg, txConfig)
 	if err != nil {
 		return nil, sdkerrors.Wrap(err, "failed to apply ethereum core message")
 	}
@@ -342,7 +342,108 @@ func (k *Keeper) ApplyTransaction(ctx sdk.Context, tx *ethtypes.Transaction) (*t
 // Commit parameter
 //
 // If commit is true, the `StateDB` will be committed, otherwise discarded.
-func (k *Keeper) ApplyMessageWithConfig(ctx sdk.Context, msg core.Message, tracer vm.EVMLogger, commit bool, cfg *types.EVMConfig, txConfig statedb.TxConfig, overrides *rpctypes.StateOverride) (*types.MsgEthereumTxResponse, error) {
+func (k *Keeper) ApplyMessageWithConfig(ctx sdk.Context, msg core.Message, tracer vm.EVMLogger, commit bool, cfg *types.EVMConfig, txConfig statedb.TxConfig) (*types.MsgEthereumTxResponse, error) {
+	var (
+		ret   []byte // return bytes from evm execution
+		vmErr error  // vm errors do not effect consensus and are therefore not assigned to err
+	)
+
+	// return error if contract creation or call are disabled through governance
+	if !cfg.Params.EnableCreate && msg.To() == nil {
+		return nil, sdkerrors.Wrap(types.ErrCreateDisabled, "failed to create new contract")
+	} else if !cfg.Params.EnableCall && msg.To() != nil {
+		return nil, sdkerrors.Wrap(types.ErrCallDisabled, "failed to call contract")
+	}
+
+	stateDB := statedb.New(ctx, k, txConfig)
+	evm := k.NewEVM(ctx, msg, cfg, tracer, stateDB)
+
+	sender := vm.AccountRef(msg.From())
+	contractCreation := msg.To() == nil
+	isLondon := cfg.ChainConfig.IsLondon(evm.Context.BlockNumber)
+
+	intrinsicGas, err := k.GetEthIntrinsicGas(ctx, msg, cfg.ChainConfig, contractCreation)
+	if err != nil {
+		// should have already been checked on Ante Handler
+		return nil, sdkerrors.Wrap(err, "intrinsic gas failed")
+	}
+
+	// Should check again even if it is checked on Ante Handler, because eth_call don't go through Ante Handler.
+	if msg.Gas() < intrinsicGas {
+		// eth_estimateGas will check for this exact error
+		return nil, sdkerrors.Wrap(core.ErrIntrinsicGas, "apply message")
+	}
+
+	leftoverGas := msg.Gas() - intrinsicGas
+
+	// access list preparation is moved from ante handler to here, because it's needed when `ApplyMessage` is called
+	// under contexts where ante handlers are not run, for example `eth_call` and `eth_estimateGas`.
+	if rules := cfg.ChainConfig.Rules(big.NewInt(ctx.BlockHeight()), cfg.ChainConfig.MergeNetsplitBlock != nil); rules.IsBerlin {
+		stateDB.PrepareAccessList(msg.From(), msg.To(), vm.ActivePrecompiles(rules), msg.AccessList())
+	}
+
+	if contractCreation {
+		// take over the nonce management from evm:
+		// - reset sender's nonce to msg.Nonce() before calling evm.
+		// - increase sender's nonce by one no matter the result.
+		stateDB.SetNonce(sender.Address(), msg.Nonce())
+		ret, _, leftoverGas, vmErr = evm.Create(sender, msg.Data(), leftoverGas, msg.Value())
+		stateDB.SetNonce(sender.Address(), msg.Nonce()+1)
+	} else {
+		ret, leftoverGas, vmErr = evm.Call(sender, *msg.To(), msg.Data(), leftoverGas, msg.Value())
+	}
+
+	refundQuotient := params.RefundQuotient
+
+	// After EIP-3529: refunds are capped to gasUsed / 5
+	if isLondon {
+		refundQuotient = params.RefundQuotientEIP3529
+	}
+
+	// calculate gas refund
+	if msg.Gas() < leftoverGas {
+		return nil, sdkerrors.Wrap(types.ErrGasOverflow, "apply message")
+	}
+
+	temporaryGasUsed := msg.Gas() - leftoverGas
+	refund := GasToRefund(stateDB.GetRefund(), temporaryGasUsed, refundQuotient)
+	if refund > temporaryGasUsed {
+		return nil, sdkerrors.Wrap(types.ErrGasOverflow, "apply message")
+	}
+
+	temporaryGasUsed -= refund
+
+	// EVM execution error needs to be available for the JSON-RPC client
+	var vmError string
+	if vmErr != nil {
+		vmError = vmErr.Error()
+	}
+
+	// The dirty states in `StateDB` is either committed or discarded after return
+	if commit {
+		if err := stateDB.Commit(); err != nil {
+			return nil, sdkerrors.Wrap(err, "failed to commit stateDB")
+		}
+	}
+
+	// calculate a minimum amount of gas to be charged to sender if GasLimit
+	// is considerably higher than GasUsed to stay more aligned with Tendermint gas mechanics
+	// for more info https://github.com/evmos/ethermint/issues/1085
+	gasLimit := sdk.NewDec(int64(msg.Gas()))
+	minGasMultiplier := k.GetMinGasMultiplier(ctx)
+	minimumGasUsed := gasLimit.Mul(minGasMultiplier)
+	gasUsed := sdk.MaxDec(minimumGasUsed, sdk.NewDec(int64(temporaryGasUsed))).TruncateInt().Uint64()
+
+	return &types.MsgEthereumTxResponse{
+		GasUsed: gasUsed,
+		VmError: vmError,
+		Ret:     ret,
+		Logs:    types.NewLogsFromEth(stateDB.Logs()),
+		Hash:    txConfig.TxHash.Hex(),
+	}, nil
+}
+
+func (k *Keeper) ApplyMessageWithConfigAndStateOverride(ctx sdk.Context, msg core.Message, tracer vm.EVMLogger, commit bool, cfg *types.EVMConfig, txConfig statedb.TxConfig, overrides *rpctypes.StateOverride) (*types.MsgEthereumTxResponse, error) {
 	var (
 		ret   []byte // return bytes from evm execution
 		vmErr error  // vm errors do not effect consensus and are therefore not assigned to err
@@ -456,7 +557,7 @@ func (k *Keeper) ApplyMessage(ctx sdk.Context, msg core.Message, tracer vm.EVMLo
 		return nil, sdkerrors.Wrap(err, "failed to load evm config")
 	}
 	txConfig := statedb.NewEmptyTxConfig(common.BytesToHash(ctx.HeaderHash()))
-	return k.ApplyMessageWithConfig(ctx, msg, tracer, commit, cfg, txConfig, nil)
+	return k.ApplyMessageWithConfig(ctx, msg, tracer, commit, cfg, txConfig)
 }
 
 // GetEthIntrinsicGas returns the intrinsic gas cost for the transaction
