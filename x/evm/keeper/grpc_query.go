@@ -35,12 +35,6 @@ const (
 	defaultTraceTimeout = 5 * time.Second
 )
 
-type QueryServer interface {
-	types.QueryServer
-
-	EthCallWithStateOverride(ctx context.Context, in *types.EthCallRequest, overrides *rpctypes.StateOverride) (*types.MsgEthereumTxResponse, error)
-}
-
 // Account implements the Query/Account gRPC method
 func (k Keeper) Account(c context.Context, req *types.QueryAccountRequest) (*types.QueryAccountResponse, error) {
 	if req == nil {
