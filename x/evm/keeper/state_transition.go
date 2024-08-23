@@ -1,6 +1,7 @@
 package keeper
 
 import (
+	"fmt"
 	"math"
 	"math/big"
 
@@ -449,6 +450,8 @@ func (k *Keeper) ApplyMessageWithConfigAndStateOverride(ctx sdk.Context, msg cor
 		vmErr error  // vm errors do not effect consensus and are therefore not assigned to err
 	)
 
+	fmt.Printf("################### OVERRIDES: %v ################\n", overrides)
+
 	// return error if contract creation or call are disabled through governance
 	if !cfg.Params.EnableCreate && msg.To() == nil {
 		return nil, sdkerrors.Wrap(types.ErrCreateDisabled, "failed to create new contract")
@@ -459,10 +462,8 @@ func (k *Keeper) ApplyMessageWithConfigAndStateOverride(ctx sdk.Context, msg cor
 	stateDB := statedb.New(ctx, k, txConfig)
 	evm := k.NewEVM(ctx, msg, cfg, tracer, stateDB)
 
-	if overrides != nil {
-		if err := overrides.Apply(stateDB); err != nil {
-			return nil, err
-		}
+	if err := overrides.Apply(stateDB); err != nil {
+		return nil, err
 	}
 
 	sender := vm.AccountRef(msg.From())

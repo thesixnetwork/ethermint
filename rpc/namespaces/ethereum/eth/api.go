@@ -663,13 +663,14 @@ func (e *PublicAPI) Resend(ctx context.Context, args evmtypes.TransactionArgs, g
 }
 
 // Call performs a raw contract call.
-func (e *PublicAPI) Call(args evmtypes.TransactionArgs, blockNrOrHash rpctypes.BlockNumberOrHash, overrides *evmtypes.StateOverride) (hexutil.Bytes, error) {
+func (e *PublicAPI) Call(args evmtypes.TransactionArgs, blockNrOrHash rpctypes.BlockNumberOrHash, overrides *rpctypes.StateOverride) (hexutil.Bytes, error) {
 	e.logger.Debug("eth_call", "args", args.String(), "block number or hash", blockNrOrHash)
 
 	blockNum, err := e.getBlockNumber(blockNrOrHash)
 	if err != nil {
 		return nil, err
 	}
+	
 	data, err := e.doCall(args, blockNum, overrides)
 	if err != nil {
 		return []byte{}, err
@@ -681,7 +682,7 @@ func (e *PublicAPI) Call(args evmtypes.TransactionArgs, blockNrOrHash rpctypes.B
 // DoCall performs a simulated call operation through the evmtypes. It returns the
 // estimated gas used on the operation or an error if fails.
 func (e *PublicAPI) doCall(
-	args evmtypes.TransactionArgs, blockNr rpctypes.BlockNumber, overrides *evmtypes.StateOverride,
+	args evmtypes.TransactionArgs, blockNr rpctypes.BlockNumber, overrides *rpctypes.StateOverride,
 ) (*evmtypes.MsgEthereumTxResponse, error) {
 	bz, err := json.Marshal(&args)
 	if err != nil {
@@ -709,13 +710,19 @@ func (e *PublicAPI) doCall(
 
 	if overrides != nil {
 
+		fmt.Printf("#################### OVERRIDE: %v ##############\n" ,overrides)
+
+		protoOverides := rpctypes.ToProtoStateOverride(overrides)
+
 		req := evmtypes.EthCallWithOverrideRequest{
 			Args:   bz,
 			GasCap: e.backend.RPCGasCap(),
-			Overrides: overrides,
+			Overrides: protoOverides,
 		}
 
-		res, err := e.queryClient.QueryClient.EthCallWithOverride(rpcCtx, &req)
+		fmt.Println("################# PROCESSS OVERIDE ###############")
+
+		res, err := e.queryClient.EthCallWithOverride(rpcCtx, &req)
 		if err != nil {
 			return nil, err
 		}

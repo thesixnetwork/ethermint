@@ -662,6 +662,8 @@ func (k Keeper) EthCallWithOverride(c context.Context, req *types.EthCallWithOve
 
 	rpcOverides := rpcrtypes.FromProtoStateOverride(req.Overrides)
 
+	fmt.Printf("################### OVERRIDES: %v ################\n", rpcOverides)
+
 	// pass false to not commit StateDB
 	res, err := k.ApplyMessageWithConfigAndStateOverride(ctx, msg, nil, false, cfg, txConfig, &rpcOverides)
 	if err != nil {
