@@ -30,7 +30,6 @@ import (
 
 	"github.com/evmos/ethermint/server"
 	evmtypes "github.com/evmos/ethermint/x/evm/types"
-  ethemintApp "github.com/evmos/ethermint/app"
 )
 
 func startInProcess(cfg Config, val *Validator) error {
@@ -48,7 +47,6 @@ func startInProcess(cfg Config, val *Validator) error {
 	}
 
 	app := cfg.AppConstructor(*val)
-  evmKeeper := app.(*ethemintApp.EthermintApp).EvmKeeper
 
 	genDocProvider := node.DefaultGenesisDocProviderFunc(tmCfg)
 	tmNode, err := node.NewNode(
@@ -132,7 +130,7 @@ func startInProcess(cfg Config, val *Validator) error {
 		tmEndpoint := "/websocket"
 		tmRPCAddr := val.RPCAddress
 
-		val.jsonrpc, val.jsonrpcDone, err = server.StartJSONRPC(val.Ctx, val.ClientCtx, tmRPCAddr, tmEndpoint, *val.AppConfig, evmKeeper)
+		val.jsonrpc, val.jsonrpcDone, err = server.StartJSONRPC(val.Ctx, val.ClientCtx, tmRPCAddr, tmEndpoint, *val.AppConfig)
 		if err != nil {
 			return err
 		}

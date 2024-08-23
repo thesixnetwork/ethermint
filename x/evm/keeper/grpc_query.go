@@ -23,10 +23,11 @@ import (
 	"github.com/ethereum/go-ethereum/core/vm"
 	ethparams "github.com/ethereum/go-ethereum/params"
 
-	rpctypes "github.com/evmos/ethermint/rpc/types"
 	ethermint "github.com/evmos/ethermint/types"
 	"github.com/evmos/ethermint/x/evm/statedb"
 	"github.com/evmos/ethermint/x/evm/types"
+
+	rpcrtypes "github.com/evmos/ethermint/rpc/types"
 )
 
 var _ types.QueryServer = Keeper{}
@@ -630,7 +631,7 @@ func (k Keeper) BaseFee(c context.Context, _ *types.QueryBaseFeeRequest) (*types
 	return res, nil
 }
 
-func (k Keeper) EthCallWithOverrides(c context.Context, req *types.EthCallRequest, overrides *rpctypes.StateOverride) (*types.MsgEthereumTxResponse, error) {
+func (k Keeper) EthCallWithOverride(c context.Context, req *types.EthCallWithOverrideRequest) (*types.MsgEthereumTxResponse, error) {
 	if req == nil {
 		return nil, status.Error(codes.InvalidArgument, "empty request")
 	}
@@ -659,8 +660,10 @@ func (k Keeper) EthCallWithOverrides(c context.Context, req *types.EthCallReques
 
 	txConfig := statedb.NewEmptyTxConfig(common.BytesToHash(ctx.HeaderHash()))
 
+	rpcOverides := rpcrtypes.FromProtoStateOverride(req.Overrides)
+
 	// pass false to not commit StateDB
-	res, err := k.ApplyMessageWithConfigAndStateOverride(ctx, msg, nil, false, cfg, txConfig, overrides)
+	res, err := k.ApplyMessageWithConfigAndStateOverride(ctx, msg, nil, false, cfg, txConfig, &rpcOverides)
 	if err != nil {
 		return nil, status.Error(codes.Internal, err.Error())
 	}

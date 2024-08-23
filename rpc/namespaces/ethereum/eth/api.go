@@ -39,7 +39,6 @@ import (
 	"github.com/evmos/ethermint/rpc/backend"
 	rpctypes "github.com/evmos/ethermint/rpc/types"
 	ethermint "github.com/evmos/ethermint/types"
-	evmKeeper "github.com/evmos/ethermint/x/evm/keeper"
 	evmtypes "github.com/evmos/ethermint/x/evm/types"
 )
 
@@ -53,7 +52,6 @@ type PublicAPI struct {
 	backend      backend.EVMBackend
 	nonceLock    *rpctypes.AddrLocker
 	signer       ethtypes.Signer
-	keeper       *evmKeeper.Keeper
 }
 
 // NewPublicAPI creates an instance of the public ETH Web3 API.
@@ -62,7 +60,6 @@ func NewPublicAPI(
 	clientCtx client.Context,
 	backend backend.EVMBackend,
 	nonceLock *rpctypes.AddrLocker,
-	keeper *evmKeeper.Keeper,
 ) *PublicAPI {
 	eip155ChainID, err := ethermint.ParseChainID(clientCtx.ChainID)
 	if err != nil {
@@ -104,7 +101,6 @@ func NewPublicAPI(
 		backend:      backend,
 		nonceLock:    nonceLock,
 		signer:       signer,
-		keeper:       keeper,
 	}
 
 	return api
@@ -667,7 +663,7 @@ func (e *PublicAPI) Resend(ctx context.Context, args evmtypes.TransactionArgs, g
 }
 
 // Call performs a raw contract call.
-func (e *PublicAPI) Call(args evmtypes.TransactionArgs, blockNrOrHash rpctypes.BlockNumberOrHash, overrides *rpctypes.StateOverride) (hexutil.Bytes, error) {
+func (e *PublicAPI) Call(args evmtypes.TransactionArgs, blockNrOrHash rpctypes.BlockNumberOrHash, overrides *evmtypes.StateOverride) (hexutil.Bytes, error) {
 	e.logger.Debug("eth_call", "args", args.String(), "block number or hash", blockNrOrHash)
 
 	blockNum, err := e.getBlockNumber(blockNrOrHash)
@@ -685,16 +681,11 @@ func (e *PublicAPI) Call(args evmtypes.TransactionArgs, blockNrOrHash rpctypes.B
 // DoCall performs a simulated call operation through the evmtypes. It returns the
 // estimated gas used on the operation or an error if fails.
 func (e *PublicAPI) doCall(
-	args evmtypes.TransactionArgs, blockNr rpctypes.BlockNumber, overrides *rpctypes.StateOverride,
+	args evmtypes.TransactionArgs, blockNr rpctypes.BlockNumber, overrides *evmtypes.StateOverride,
 ) (*evmtypes.MsgEthereumTxResponse, error) {
 	bz, err := json.Marshal(&args)
 	if err != nil {
 		return nil, err
-	}
-
-	req := evmtypes.EthCallRequest{
-		Args:   bz,
-		GasCap: e.backend.RPCGasCap(),
 	}
 
 	// From ContextWithHeight: if the provided height is 0,
@@ -717,7 +708,14 @@ func (e *PublicAPI) doCall(
 	defer cancel()
 
 	if overrides != nil {
-		res, err := e.keeper.EthCallWithOverrides(rpcCtx, &req, overrides)
+
+		req := evmtypes.EthCallWithOverrideRequest{
+			Args:   bz,
+			GasCap: e.backend.RPCGasCap(),
+			Overrides: overrides,
+		}
+
+		res, err := e.queryClient.QueryClient.EthCallWithOverride(rpcCtx, &req)
 		if err != nil {
 			return nil, err
 		}
@@ -731,6 +729,10 @@ func (e *PublicAPI) doCall(
 
 		return res, nil
 	} else {
+		req := evmtypes.EthCallRequest{
+			Args:   bz,
+			GasCap: e.backend.RPCGasCap(),
+		}
 		res, err := e.queryClient.EthCall(rpcCtx, &req)
 		if err != nil {
 			return nil, err

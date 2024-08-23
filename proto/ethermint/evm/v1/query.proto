@@ -78,6 +78,10 @@ service Query {
     option (google.api.http).get = "/ethermint/evm/v1/base_fee";
   }
 
+  // EthCall implements the `eth_call` rpc api
+  rpc EthCallWithOverride(EthCallWithOverrideRequest) returns (MsgEthereumTxResponse) {
+    option (google.api.http).get = "/ethermint/evm/v1/eth_call_overides";
+  }
 }
 
 // QueryAccountRequest is the request type for the Query/Account RPC method.
@@ -227,6 +231,15 @@ message EthCallRequest {
   uint64 gas_cap = 2;
 }
 
+message EthCallWithOverrideRequest {
+  // same json format as the json rpc api.
+  bytes args = 1;
+  // the default gas cap to be used
+  uint64 gas_cap = 2;
+
+  StateOverride overrides = 3;
+}
+
 // EstimateGasResponse defines EstimateGas response
 message EstimateGasResponse {
   // the estimated gas
@@ -286,4 +299,17 @@ message QueryBaseFeeRequest {}
 message QueryBaseFeeResponse {
   string base_fee = 1
       [ (gogoproto.customtype) = "github.com/cosmos/cosmos-sdk/types.Int" ];
+}
+
+message OverrideAccount {
+  uint64 nonce = 1;  // Nonce of the account
+  bytes code = 2;    // Smart contract code of the account
+  string balance = 3; // Balance of the account, as a string for compatibility with big numbers
+  map<string, string> state = 4;      // State of the account (key-value pairs of hashes)
+  map<string, string> state_diff = 5; // State diff of the account (key-value pairs of hashes)
+}
+
+// StateOverride is a map of addresses to OverrideAccount.
+message StateOverride {
+  map<string, OverrideAccount> accounts = 1; // Mapping of addresses to OverrideAccount
 }

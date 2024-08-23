@@ -54,6 +54,25 @@ type RPCTransaction struct {
 	S                *hexutil.Big         `json:"s"`
 }
 
+// SignTransactionResult represents a RLP encoded signed transaction.
+type SignTransactionResult struct {
+	Raw hexutil.Bytes         `json:"raw"`
+	Tx  *ethtypes.Transaction `json:"tx"`
+}
+
+type OneFeeHistory struct {
+	BaseFee      *big.Int   // base fee  for each block
+	Reward       []*big.Int // each element of the array will have the tip provided to miners for the percentile given
+	GasUsedRatio float64    // the ratio of gas used to the gas limit for each block
+}
+
+type FeeHistoryResult struct {
+	OldestBlock  *hexutil.Big     `json:"oldestBlock"`
+	Reward       [][]*hexutil.Big `json:"reward,omitempty"`
+	BaseFee      []*hexutil.Big   `json:"baseFeePerGas,omitempty"`
+	GasUsedRatio []float64        `json:"gasUsedRatio"`
+}
+
 // StateOverride is the collection of overridden accounts.
 type StateOverride map[common.Address]OverrideAccount
 
@@ -69,25 +88,6 @@ type OverrideAccount struct {
 	Balance   **hexutil.Big                `json:"balance"`
 	State     *map[common.Hash]common.Hash `json:"state"`
 	StateDiff *map[common.Hash]common.Hash `json:"stateDiff"`
-}
-
-type FeeHistoryResult struct {
-	OldestBlock  *hexutil.Big     `json:"oldestBlock"`
-	Reward       [][]*hexutil.Big `json:"reward,omitempty"`
-	BaseFee      []*hexutil.Big   `json:"baseFeePerGas,omitempty"`
-	GasUsedRatio []float64        `json:"gasUsedRatio"`
-}
-
-// SignTransactionResult represents a RLP encoded signed transaction.
-type SignTransactionResult struct {
-	Raw hexutil.Bytes         `json:"raw"`
-	Tx  *ethtypes.Transaction `json:"tx"`
-}
-
-type OneFeeHistory struct {
-	BaseFee      *big.Int   // base fee  for each block
-	Reward       []*big.Int // each element of the array will have the tip provided to miners for the percentile given
-	GasUsedRatio float64    // the ratio of gas used to the gas limit for each block
 }
 
 // Apply overrides the fields of specified accounts into the given state.
