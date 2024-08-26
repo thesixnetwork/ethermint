@@ -20,7 +20,6 @@ func (cc ChainConfig) EthereumConfig(chainID *big.Int) *params.ChainConfig {
 		DAOForkBlock:            getBlockValue(cc.DAOForkBlock),
 		DAOForkSupport:          cc.DAOForkSupport,
 		EIP150Block:             getBlockValue(cc.EIP150Block),
-		EIP150Hash:              common.HexToHash(cc.EIP150Hash),
 		EIP155Block:             getBlockValue(cc.EIP155Block),
 		EIP158Block:             getBlockValue(cc.EIP158Block),
 		ByzantiumBlock:          getBlockValue(cc.ByzantiumBlock),
@@ -31,10 +30,17 @@ func (cc ChainConfig) EthereumConfig(chainID *big.Int) *params.ChainConfig {
 		BerlinBlock:             getBlockValue(cc.BerlinBlock),
 		LondonBlock:             getBlockValue(cc.LondonBlock),
 		ArrowGlacierBlock:       getBlockValue(cc.ArrowGlacierBlock),
+		GrayGlacierBlock:        &big.Int{},
 		MergeNetsplitBlock:      getBlockValue(cc.MergeForkBlock),
+		ShanghaiTime:            new(uint64),
+		CancunTime:                    new(uint64),
+		PragueTime:                    new(uint64),
+		VerkleTime:                    new(uint64),
 		TerminalTotalDifficulty: nil,
+		TerminalTotalDifficultyPassed: false,
 		Ethash:                  nil,
 		Clique:                  nil,
+		IsDevMode:                     false,
 	}
 }
 

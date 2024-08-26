@@ -4,6 +4,7 @@ package statedb
 
 import (
 	"bytes"
+	"fmt"
 	"math/big"
 	"sort"
 
@@ -37,6 +38,21 @@ func (acct Account) IsContract() bool {
 // Storage represents in-memory cache/buffer of contract storage.
 type Storage map[common.Hash]common.Hash
 
+func (s Storage) String() (str string) {
+	for key, value := range s {
+		str += fmt.Sprintf("%X : %X\n", key, value)
+	}
+	return
+}
+
+func (s Storage) Copy() Storage {
+	cpy := make(Storage, len(s))
+	for key, value := range s {
+		cpy[key] = value
+	}
+	return cpy
+}
+
 // SortedKeys sort the keys for deterministic iteration
 func (s Storage) SortedKeys() []common.Hash {
 	keys := make([]common.Hash, 0, len(s))
@@ -67,9 +83,20 @@ type stateObject struct {
 
 	address common.Address
 
-	// flags
-	dirtyCode bool
-	suicided  bool
+	// Cache flags.
+	dirtyCode bool // true if the code was updated
+
+	// Flag whether the account was marked as self-destructed. The self-destructed account
+	// is still accessible in the scope of same transaction.
+	selfDestructed bool
+
+	// Flag whether the account was marked as deleted. A self-destructed account
+	// or an account that is considered as empty will be marked as deleted at
+	// the end of transaction and no longer accessible anymore.
+	deleted bool
+
+	// Flag whether the object was created in the current transaction
+	created bool
 }
 
 // newObject creates a state object.
@@ -95,8 +122,8 @@ func (s *stateObject) empty() bool {
 	return s.account.Nonce == 0 && s.account.Balance.Sign() == 0 && bytes.Equal(s.account.CodeHash, emptyCodeHash)
 }
 
-func (s *stateObject) markSuicided() {
-	s.suicided = true
+func (s *stateObject) markSelfdestructed() {
+	s.selfDestructed = true
 }
 
 // AddBalance adds amount to s's balance.

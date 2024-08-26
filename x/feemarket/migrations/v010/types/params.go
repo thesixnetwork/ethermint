@@ -36,11 +36,12 @@ func NewParams(noBaseFee bool, baseFeeChangeDenom, elasticityMultiplier uint32, 
 }
 
 // DefaultParams returns default evm parameters
+// TODO: 1
 func DefaultParams() Params {
 	return Params{
 		NoBaseFee:                false,
-		BaseFeeChangeDenominator: params.BaseFeeChangeDenominator,
-		ElasticityMultiplier:     params.ElasticityMultiplier,
+		// BaseFeeChangeDenominator: params.BaseFeeChangeDenominator,
+		// ElasticityMultiplier:     params.ElasticityMultiplier,
 		BaseFee:                  sdk.NewIntFromUint64(params.InitialBaseFee),
 		EnableHeight:             0,
 	}

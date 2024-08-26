@@ -15,6 +15,7 @@ import (
 	evmtypes "github.com/evmos/ethermint/x/evm/types"
 
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/core"
 	ethtypes "github.com/ethereum/go-ethereum/core/types"
 )
 
@@ -41,7 +42,8 @@ func (esvd EthSigVerificationDecorator) AnteHandle(ctx sdk.Context, tx sdk.Tx, s
 
 	ethCfg := params.ChainConfig.EthereumConfig(chainID)
 	blockNum := big.NewInt(ctx.BlockHeight())
-	signer := ethtypes.MakeSigner(ethCfg, blockNum)
+	blockTime := uint64(ctx.BlockTime().Unix())
+	signer := ethtypes.MakeSigner(ethCfg, blockNum, blockTime)
 
 	for _, msg := range tx.GetMsgs() {
 		msgEthTx, ok := msg.(*evmtypes.MsgEthereumTx)
@@ -259,7 +261,7 @@ func NewCanTransferDecorator(evmKeeper EVMKeeper) CanTransferDecorator {
 func (ctd CanTransferDecorator) AnteHandle(ctx sdk.Context, tx sdk.Tx, simulate bool, next sdk.AnteHandler) (sdk.Context, error) {
 	params := ctd.evmKeeper.GetParams(ctx)
 	ethCfg := params.ChainConfig.EthereumConfig(ctd.evmKeeper.ChainID())
-	signer := ethtypes.MakeSigner(ethCfg, big.NewInt(ctx.BlockHeight()))
+	signer := ethtypes.MakeSigner(ethCfg, big.NewInt(ctx.BlockHeight()), uint64(ctx.BlockTime().Unix()))
 
 	for _, msg := range tx.GetMsgs() {
 		msgEthTx, ok := msg.(*evmtypes.MsgEthereumTx)
@@ -270,13 +272,31 @@ func (ctd CanTransferDecorator) AnteHandle(ctx sdk.Context, tx sdk.Tx, simulate 
 		baseFee := ctd.evmKeeper.GetBaseFee(ctx, ethCfg)
 		legacybaseFee := ctd.evmKeeper.GetLegacyBaseFee(ctx, ethCfg)
 
-		coreMsg, err := msgEthTx.AsMessage(signer, baseFee)
-		if err != nil {
-			return ctx, sdkerrors.Wrapf(
-				err,
-				"failed to create an ethereum core.Message from signer %T", signer,
-			)
+		sender, err := signer.Sender(msgEthTx.AsTransaction())
+		ethMsg := msgEthTx.AsTransaction()
+
+		// coreMsg, err := msgEthTx.AsMessage(msg, signer, baseFee)
+		coreMsg := core.Message{
+			To:                ethMsg.To(),
+			From:              sender,
+			Nonce:             ethMsg.Nonce(),
+			Value:             ethMsg.Value(),
+			GasLimit:          ethMsg.Gas(),
+			GasPrice:          ethMsg.GasPrice(),
+			GasFeeCap:         ethMsg.GasFeeCap(),
+			GasTipCap:         ethMsg.GasTipCap(),
+			Data:              ethMsg.Data(),
+			AccessList:        ethMsg.AccessList(),
+			BlobHashes:        ethMsg.BlobHashes(),
+			BlobGasFeeCap:     ethMsg.BlobGasFeeCap(),
+			SkipAccountChecks: false,
 		}
+		// if err != nil {
+		// 	return ctx, sdkerrors.Wrapf(
+		// 		err,
+		// 		"failed to create an ethereum core.Message from signer %T", signer,
+		// 	)
+		// }
 
 		// NOTE: pass in an empty coinbase address and nil tracer as we don't need them for the check below
 		cfg := &evmtypes.EVMConfig{
@@ -290,12 +310,12 @@ func (ctd CanTransferDecorator) AnteHandle(ctx sdk.Context, tx sdk.Tx, simulate 
 
 		// check that caller has enough balance to cover asset transfer for **topmost** call
 		// NOTE: here the gas consumed is from the context with the infinite gas meter
-		if coreMsg.Value().Sign() > 0 && !evm.Context.CanTransfer(stateDB, coreMsg.From(), coreMsg.Value()) {
+		if coreMsg.Value.Sign() > 0 && !evm.Context.CanTransfer(stateDB, coreMsg.From, coreMsg.Value) {
 			return ctx, sdkerrors.Wrapf(
 				sdkerrors.ErrInsufficientFunds,
 				"failed to transfer %s from address %s using the EVM block context transfer function",
-				coreMsg.Value(),
-				coreMsg.From(),
+				coreMsg.Value,
+				coreMsg.From,
 			)
 		}
 
@@ -314,11 +334,11 @@ func (ctd CanTransferDecorator) AnteHandle(ctx sdk.Context, tx sdk.Tx, simulate 
 					)
 				}
 
-				if coreMsg.GasFeeCap().Cmp(baseFee) < 0 {
+				if coreMsg.GasFeeCap.Cmp(baseFee) < 0 {
 					return ctx, sdkerrors.Wrapf(
 						sdkerrors.ErrInsufficientFee,
 						"max fee per gas less than block base fee (%s < %s)",
-						coreMsg.GasFeeCap(), baseFee,
+						coreMsg.GasFeeCap, baseFee,
 					)
 				}
 			}
@@ -331,11 +351,11 @@ func (ctd CanTransferDecorator) AnteHandle(ctx sdk.Context, tx sdk.Tx, simulate 
 					)
 				}
 
-				if coreMsg.GasFeeCap().Cmp(legacybaseFee) < 0 {
+				if coreMsg.GasFeeCap.Cmp(legacybaseFee) < 0 {
 					return ctx, sdkerrors.Wrapf(
 						sdkerrors.ErrInsufficientFee,
 						"max fee per gas less than block base fee (%s < %s)",
-						coreMsg.GasFeeCap(), legacybaseFee,
+						coreMsg.GasFeeCap, legacybaseFee,
 					)
 				}
 			}

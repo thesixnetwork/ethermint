@@ -264,6 +264,7 @@ func (suite *KeeperTestSuite) TestGetEthIntrinsicGas() {
 			m, err := newNativeMessage(
 				nonce,
 				suite.ctx.BlockHeight(),
+				uint64(suite.ctx.BlockTime().Unix()),
 				suite.address,
 				ethCfg,
 				suite.signer,
@@ -396,6 +397,7 @@ func (suite *KeeperTestSuite) TestRefundGas() {
 			m, err := newNativeMessage(
 				vmdb.GetNonce(suite.address),
 				suite.ctx.BlockHeight(),
+				uint64(suite.ctx.BlockTime().Unix()),
 				suite.address,
 				ethCfg,
 				suite.signer,
@@ -408,10 +410,10 @@ func (suite *KeeperTestSuite) TestRefundGas() {
 
 			vmdb.AddRefund(params.TxGas)
 
-			if tc.leftoverGas > m.Gas() {
+			if tc.leftoverGas > m.GasLimit {
 				return
 			}
-			gasUsed := m.Gas() - tc.leftoverGas
+			gasUsed := m.GasLimit - tc.leftoverGas
 			refund := keeper.GasToRefund(vmdb.GetRefund(), gasUsed, tc.refundQuotient)
 			suite.Require().Equal(tc.expGasRefund, refund)
 

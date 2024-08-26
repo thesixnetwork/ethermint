@@ -15,6 +15,7 @@ import (
 
 // EthereumConfig returns an Ethereum ChainConfig for EVM state transitions.
 // All the negative or nil values are converted to nil
+// TODO: 3
 func (cc ChainConfig) EthereumConfig(chainID *big.Int) *params.ChainConfig {
 	return &params.ChainConfig{
 		ChainID:                 chainID,
@@ -22,7 +23,7 @@ func (cc ChainConfig) EthereumConfig(chainID *big.Int) *params.ChainConfig {
 		DAOForkBlock:            getBlockValue(cc.DAOForkBlock),
 		DAOForkSupport:          cc.DAOForkSupport,
 		EIP150Block:             getBlockValue(cc.EIP150Block),
-		EIP150Hash:              common.HexToHash(cc.EIP150Hash),
+		// EIP150Hash:              common.HexToHash(cc.EIP150Hash),
 		EIP155Block:             getBlockValue(cc.EIP155Block),
 		EIP158Block:             getBlockValue(cc.EIP158Block),
 		ByzantiumBlock:          getBlockValue(cc.ByzantiumBlock),

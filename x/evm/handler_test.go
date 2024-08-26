@@ -507,19 +507,19 @@ func (suite *EvmTestSuite) deployERC20Contract() common.Address {
 	nonce := k.GetNonce(suite.ctx, suite.from)
 	ctorArgs, err := types.ERC20Contract.ABI.Pack("", suite.from, big.NewInt(10000000000))
 	suite.Require().NoError(err)
-	msg := ethtypes.NewMessage(
-		suite.from,
-		nil,
-		nonce,
-		big.NewInt(0),
-		2000000,
-		big.NewInt(1),
-		nil,
-		nil,
-		append(types.ERC20Contract.Bin, ctorArgs...),
-		nil,
-		true,
-	)
+	msg := core.Message{
+		To:                nil,
+		From:              suite.from,
+		Nonce:             nonce,
+		Value:             big.NewInt(0),
+		GasLimit:          2000000,
+		GasPrice:         	big.NewInt(1),
+		GasFeeCap:         nil,
+		GasTipCap:         nil,
+		Data:              append(types.ERC20Contract.Bin, ctorArgs...),
+		AccessList:        nil,
+		SkipAccountChecks: true,
+	}
 	rsp, err := k.ApplyMessage(suite.ctx, msg, nil, true)
 	suite.Require().NoError(err)
 	suite.Require().False(rsp.Failed())

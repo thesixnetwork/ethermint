@@ -19,7 +19,9 @@ func (k Keeper) DeductTxCostsFromUserBalance(
 	msgEthTx evmtypes.MsgEthereumTx,
 	txData evmtypes.TxData,
 	denom string,
-	homestead, istanbul, london bool,
+	homestead, 
+	istanbul, 
+	london bool,
 ) (sdk.Coins, error) {
 	isContractCreation := txData.GetTo() == nil
 
@@ -36,7 +38,7 @@ func (k Keeper) DeductTxCostsFromUserBalance(
 		accessList = txData.GetAccessList()
 	}
 
-	intrinsicGas, err := core.IntrinsicGas(txData.GetData(), accessList, isContractCreation, homestead, istanbul)
+	intrinsicGas, err := core.IntrinsicGas(txData.GetData(), accessList, isContractCreation, homestead, istanbul, london)
 	if err != nil {
 		return nil, sdkerrors.Wrapf(
 			err,

@@ -65,12 +65,13 @@ func NewParams(
 	}
 }
 
+// TODO: 2
 // DefaultParams returns default evm parameters
 func DefaultParams() Params {
 	return Params{
 		NoBaseFee:                false,
-		BaseFeeChangeDenominator: params.BaseFeeChangeDenominator,
-		ElasticityMultiplier:     params.ElasticityMultiplier,
+		// BaseFeeChangeDenominator: params.BaseFeeChangeDenominator,
+		// ElasticityMultiplier:     params.ElasticityMultiplier,
 		BaseFee:                  sdk.NewIntFromUint64(params.InitialBaseFee),
 		EnableHeight:             0,
 		MinGasPrice:              DefaultMinGasPrice,
