@@ -214,7 +214,7 @@ func (k *Keeper) ApplyTransaction(ctx sdk.Context, tx *ethtypes.Transaction) (*t
 	msg := core.Message{
 		To:                tx.To(),
 		From:              sender,
-		Nonce:             0,
+		Nonce:             tx.Nonce(),
 		Value:             tx.Value(),
 		GasLimit:          tx.Gas(),
 		GasPrice:          tx.GasPrice(),
