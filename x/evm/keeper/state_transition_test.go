@@ -334,7 +334,7 @@ func (suite *KeeperTestSuite) TestGasToRefund() {
 
 			if tc.expPanic {
 				panicF := func() {
-					keeper.GasToRefund(vmdb.GetRefund(), tc.gasconsumed, tc.refundQuotient)
+					_ = keeper.GasToRefund(vmdb.GetRefund(), tc.gasconsumed, tc.refundQuotient)
 				}
 				suite.Require().Panics(panicF)
 			} else {

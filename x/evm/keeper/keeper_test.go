@@ -33,7 +33,6 @@ import (
 	"github.com/evmos/ethermint/tests"
 	ethermint "github.com/evmos/ethermint/types"
 	"github.com/evmos/ethermint/x/evm/statedb"
-	"github.com/evmos/ethermint/x/evm/types"
 	evmtypes "github.com/evmos/ethermint/x/evm/types"
 
 	"github.com/ethereum/go-ethereum/common"
@@ -49,14 +48,14 @@ import (
 	"github.com/tendermint/tendermint/version"
 )
 
-var testTokens = sdk.NewIntWithDecimal(1000, 18)
+var _ = sdk.NewIntWithDecimal(1000, 18)
 
 type KeeperTestSuite struct {
 	suite.Suite
 
 	ctx         sdk.Context
 	app         *app.EthermintApp
-	queryClient types.QueryClient
+	queryClient evmtypes.QueryClient
 	address     common.Address
 	consAddress sdk.ConsAddress
 
@@ -92,7 +91,7 @@ func (suite *KeeperTestSuite) SetupTest() {
 	suite.SetupApp(checkTx)
 }
 
-/// SetupApp setup test environment, it uses`require.TestingT` to support both `testing.T` and `testing.B`.
+// / SetupApp setup test environment, it uses`require.TestingT` to support both `testing.T` and `testing.B`.
 func (suite *KeeperTestSuite) SetupApp(checkTx bool) {
 	t := suite.T()
 	// account key, use a constant account to keep unit test deterministic.
@@ -119,19 +118,19 @@ func (suite *KeeperTestSuite) SetupApp(checkTx bool) {
 		}
 		genesis[feemarkettypes.ModuleName] = app.AppCodec().MustMarshalJSON(feemarketGenesis)
 		if !suite.enableLondonHF {
-			evmGenesis := types.DefaultGenesisState()
+			evmGenesis := evmtypes.DefaultGenesisState()
 			maxInt := sdk.NewInt(math.MaxInt64)
 			evmGenesis.Params.ChainConfig.LondonBlock = &maxInt
 			evmGenesis.Params.ChainConfig.ArrowGlacierBlock = &maxInt
 			evmGenesis.Params.ChainConfig.MergeForkBlock = &maxInt
-			genesis[types.ModuleName] = app.AppCodec().MustMarshalJSON(evmGenesis)
+			genesis[evmtypes.ModuleName] = app.AppCodec().MustMarshalJSON(evmGenesis)
 		}
 		return genesis
 	})
 
 	if suite.mintFeeCollector {
 		// mint some coin to fee collector
-		coins := sdk.NewCoins(sdk.NewCoin(types.DefaultEVMDenom, sdk.NewInt(int64(params.TxGas)-1)))
+		coins := sdk.NewCoins(sdk.NewCoin(evmtypes.DefaultEVMDenom, sdk.NewInt(int64(params.TxGas)-1)))
 		genesisState := app.ModuleBasics.DefaultGenesis(suite.app.AppCodec())
 		balances := []banktypes.Balance{
 			{
@@ -140,7 +139,7 @@ func (suite *KeeperTestSuite) SetupApp(checkTx bool) {
 			},
 		}
 		// update total supply
-		bankGenesis := banktypes.NewGenesisState(banktypes.DefaultGenesisState().Params, balances, sdk.NewCoins(sdk.NewCoin(types.DefaultEVMDenom, sdk.NewInt((int64(params.TxGas)-1)))), []banktypes.Metadata{})
+		bankGenesis := banktypes.NewGenesisState(banktypes.DefaultGenesisState().Params, balances, sdk.NewCoins(sdk.NewCoin(evmtypes.DefaultEVMDenom, sdk.NewInt((int64(params.TxGas)-1)))), []banktypes.Metadata{})
 		bz := suite.app.AppCodec().MustMarshalJSON(bankGenesis)
 		require.NotNil(t, bz)
 		genesisState[banktypes.ModuleName] = suite.app.AppCodec().MustMarshalJSON(bankGenesis)
@@ -185,8 +184,8 @@ func (suite *KeeperTestSuite) SetupApp(checkTx bool) {
 	})
 
 	queryHelper := baseapp.NewQueryServerTestHelper(suite.ctx, suite.app.InterfaceRegistry())
-	types.RegisterQueryServer(queryHelper, suite.app.EvmKeeper)
-	suite.queryClient = types.NewQueryClient(queryHelper)
+	evmtypes.RegisterQueryServer(queryHelper, suite.app.EvmKeeper)
+	suite.queryClient = evmtypes.NewQueryClient(queryHelper)
 
 	acc := &ethermint.EthAccount{
 		BaseAccount: authtypes.NewBaseAccount(sdk.AccAddress(suite.address.Bytes()), nil, 0, 0),
@@ -197,6 +196,9 @@ func (suite *KeeperTestSuite) SetupApp(checkTx bool) {
 
 	valAddr := sdk.ValAddress(suite.address.Bytes())
 	validator, err := stakingtypes.NewValidator(valAddr, priv.PubKey(), stakingtypes.Description{})
+	if err != nil {
+		return
+	}
 	err = suite.app.StakingKeeper.SetValidatorByConsAddr(suite.ctx, validator)
 	require.NoError(t, err)
 	err = suite.app.StakingKeeper.SetValidatorByConsAddr(suite.ctx, validator)
@@ -212,7 +214,7 @@ func (suite *KeeperTestSuite) SetupApp(checkTx bool) {
 
 func (suite *KeeperTestSuite) EvmDenom() string {
 	ctx := sdk.WrapSDKContext(suite.ctx)
-	rsp, _ := suite.queryClient.Params(ctx, &types.QueryParamsRequest{})
+	rsp, _ := suite.queryClient.Params(ctx, &evmtypes.QueryParamsRequest{})
 	return rsp.Params.EvmDenom
 }
 
@@ -229,8 +231,8 @@ func (suite *KeeperTestSuite) Commit() {
 	suite.ctx = suite.app.BaseApp.NewContext(false, header)
 
 	queryHelper := baseapp.NewQueryServerTestHelper(suite.ctx, suite.app.InterfaceRegistry())
-	types.RegisterQueryServer(queryHelper, suite.app.EvmKeeper)
-	suite.queryClient = types.NewQueryClient(queryHelper)
+	evmtypes.RegisterQueryServer(queryHelper, suite.app.EvmKeeper)
+	suite.queryClient = evmtypes.NewQueryClient(queryHelper)
 }
 
 func (suite *KeeperTestSuite) StateDB() *statedb.StateDB {
@@ -242,27 +244,27 @@ func (suite *KeeperTestSuite) DeployTestContract(t require.TestingT, owner commo
 	ctx := sdk.WrapSDKContext(suite.ctx)
 	chainID := suite.app.EvmKeeper.ChainID()
 
-	ctorArgs, err := types.ERC20Contract.ABI.Pack("", owner, supply)
+	ctorArgs, err := evmtypes.ERC20Contract.ABI.Pack("", owner, supply)
 	require.NoError(t, err)
 
 	nonce := suite.app.EvmKeeper.GetNonce(suite.ctx, suite.address)
 
-	data := append(types.ERC20Contract.Bin, ctorArgs...)
-	args, err := json.Marshal(&types.TransactionArgs{
+	data := append(evmtypes.ERC20Contract.Bin, ctorArgs...)
+	args, err := json.Marshal(&evmtypes.TransactionArgs{
 		From: &suite.address,
 		Data: (*hexutil.Bytes)(&data),
 	})
 	require.NoError(t, err)
 
-	res, err := suite.queryClient.EstimateGas(ctx, &types.EthCallRequest{
+	res, err := suite.queryClient.EstimateGas(ctx, &evmtypes.EthCallRequest{
 		Args:   args,
 		GasCap: uint64(config.DefaultGasCap),
 	})
 	require.NoError(t, err)
 
-	var erc20DeployTx *types.MsgEthereumTx
+	var erc20DeployTx *evmtypes.MsgEthereumTx
 	if suite.enableFeemarket {
-		erc20DeployTx = types.NewTxContract(
+		erc20DeployTx = evmtypes.NewTxContract(
 			chainID,
 			nonce,
 			nil,     // amount
@@ -274,7 +276,7 @@ func (suite *KeeperTestSuite) DeployTestContract(t require.TestingT, owner commo
 			&ethtypes.AccessList{}, // accesses
 		)
 	} else {
-		erc20DeployTx = types.NewTxContract(
+		erc20DeployTx = evmtypes.NewTxContract(
 			chainID,
 			nonce,
 			nil,     // amount
@@ -295,15 +297,15 @@ func (suite *KeeperTestSuite) DeployTestContract(t require.TestingT, owner commo
 	return crypto.CreateAddress(suite.address, nonce)
 }
 
-func (suite *KeeperTestSuite) TransferERC20Token(t require.TestingT, contractAddr, from, to common.Address, amount *big.Int) *types.MsgEthereumTx {
+func (suite *KeeperTestSuite) TransferERC20Token(t require.TestingT, contractAddr, from, to common.Address, amount *big.Int) *evmtypes.MsgEthereumTx {
 	ctx := sdk.WrapSDKContext(suite.ctx)
 	chainID := suite.app.EvmKeeper.ChainID()
 
-	transferData, err := types.ERC20Contract.ABI.Pack("transfer", to, amount)
+	transferData, err := evmtypes.ERC20Contract.ABI.Pack("transfer", to, amount)
 	require.NoError(t, err)
-	args, err := json.Marshal(&types.TransactionArgs{To: &contractAddr, From: &from, Data: (*hexutil.Bytes)(&transferData)})
+	args, err := json.Marshal(&evmtypes.TransactionArgs{To: &contractAddr, From: &from, Data: (*hexutil.Bytes)(&transferData)})
 	require.NoError(t, err)
-	res, err := suite.queryClient.EstimateGas(ctx, &types.EthCallRequest{
+	res, err := suite.queryClient.EstimateGas(ctx, &evmtypes.EthCallRequest{
 		Args:   args,
 		GasCap: 25_000_000,
 	})
@@ -311,9 +313,9 @@ func (suite *KeeperTestSuite) TransferERC20Token(t require.TestingT, contractAdd
 
 	nonce := suite.app.EvmKeeper.GetNonce(suite.ctx, suite.address)
 
-	var ercTransferTx *types.MsgEthereumTx
+	var ercTransferTx *evmtypes.MsgEthereumTx
 	if suite.enableFeemarket {
-		ercTransferTx = types.NewTx(
+		ercTransferTx = evmtypes.NewTx(
 			chainID,
 			nonce,
 			&contractAddr,
@@ -326,7 +328,7 @@ func (suite *KeeperTestSuite) TransferERC20Token(t require.TestingT, contractAdd
 			&ethtypes.AccessList{}, // accesses
 		)
 	} else {
-		ercTransferTx = types.NewTx(
+		ercTransferTx = evmtypes.NewTx(
 			chainID,
 			nonce,
 			&contractAddr,
@@ -353,14 +355,14 @@ func (suite *KeeperTestSuite) DeployTestMessageCall(t require.TestingT) common.A
 	ctx := sdk.WrapSDKContext(suite.ctx)
 	chainID := suite.app.EvmKeeper.ChainID()
 
-	data := types.TestMessageCall.Bin
-	args, err := json.Marshal(&types.TransactionArgs{
+	data := evmtypes.TestMessageCall.Bin
+	args, err := json.Marshal(&evmtypes.TransactionArgs{
 		From: &suite.address,
 		Data: (*hexutil.Bytes)(&data),
 	})
 	require.NoError(t, err)
 
-	res, err := suite.queryClient.EstimateGas(ctx, &types.EthCallRequest{
+	res, err := suite.queryClient.EstimateGas(ctx, &evmtypes.EthCallRequest{
 		Args:   args,
 		GasCap: uint64(config.DefaultGasCap),
 	})
@@ -368,9 +370,9 @@ func (suite *KeeperTestSuite) DeployTestMessageCall(t require.TestingT) common.A
 
 	nonce := suite.app.EvmKeeper.GetNonce(suite.ctx, suite.address)
 
-	var erc20DeployTx *types.MsgEthereumTx
+	var erc20DeployTx *evmtypes.MsgEthereumTx
 	if suite.enableFeemarket {
-		erc20DeployTx = types.NewTxContract(
+		erc20DeployTx = evmtypes.NewTxContract(
 			chainID,
 			nonce,
 			nil,     // amount
@@ -382,7 +384,7 @@ func (suite *KeeperTestSuite) DeployTestMessageCall(t require.TestingT) common.A
 			&ethtypes.AccessList{}, // accesses
 		)
 	} else {
-		erc20DeployTx = types.NewTxContract(
+		erc20DeployTx = evmtypes.NewTxContract(
 			chainID,
 			nonce,
 			nil,     // amount

@@ -566,9 +566,9 @@ func (k *Keeper) traceTx(
 	}
 	
 	// msg, err := tx.AsMessage(signer, cfg.BaseFee)
-	if err != nil {
-		return nil, 0, status.Error(codes.Internal, err.Error())
-	}
+	// if err != nil {
+	// 	return nil, 0, status.Error(codes.Internal, err.Error())
+	// }
 
 	if traceConfig == nil {
 		traceConfig = &types.TraceConfig{}
