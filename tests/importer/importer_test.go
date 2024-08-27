@@ -229,9 +229,27 @@ func applyTransaction(
 	gp *ethcore.GasPool, evmKeeper *evmkeeper.Keeper, vmdb *statedb.StateDB, header *ethtypes.Header,
 	tx *ethtypes.Transaction, usedGas *uint64, cfg ethvm.Config,
 ) (*ethtypes.Receipt, uint64, error) {
-	msg, err := tx.AsMessage(ethtypes.MakeSigner(config, header.Number), sdk.ZeroInt().BigInt())
+	signer := ethtypes.MakeSigner(config, header.Number, header.Time)
+
+	sender, err := signer.Sender(tx)
 	if err != nil {
 		return nil, 0, err
+	}
+
+	msg := &ethcore.Message{
+		To:                tx.To(),
+		From:              sender,
+		Nonce:             tx.Nonce(),
+		Value:             tx.Value(),
+		GasLimit:          tx.Gas(),
+		GasPrice:          tx.GasPrice(),
+		GasFeeCap:         tx.GasFeeCap(),
+		GasTipCap:         tx.GasTipCap(),
+		Data:              tx.Data(),
+		AccessList:        tx.AccessList(),
+		BlobHashes:        tx.BlobHashes(),
+		BlobGasFeeCap:     tx.BlobGasFeeCap(),
+		SkipAccountChecks: false,
 	}
 
 	// Create a new context to be used in the EVM environment
@@ -259,7 +277,7 @@ func applyTransaction(
 	receipt.GasUsed = execResult.UsedGas
 
 	// if the transaction created a contract, store the creation address in the receipt.
-	if msg.To() == nil {
+	if msg.To == nil {
 		receipt.ContractAddress = crypto.CreateAddress(vmenv.TxContext.Origin, tx.Nonce())
 	}
 
