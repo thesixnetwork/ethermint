@@ -10,6 +10,7 @@ import (
 
 	"github.com/ethereum/go-ethereum/eth/tracers"
 	"github.com/ethereum/go-ethereum/eth/tracers/logger"
+	"github.com/ethereum/go-ethereum/log"
 
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -284,6 +285,10 @@ func (k Keeper) EstimateGasInternal(c context.Context, req *types.EthCallRequest
 		gasCap uint64
 	)
 
+	if args.From == nil {
+		args.From = new(common.Address)
+	}
+
 	// Determine the highest gas limit can be used during the estimation.
 	if args.Gas != nil && uint64(*args.Gas) >= ethparams.TxGas {
 		hi = uint64(*args.Gas)
@@ -297,10 +302,45 @@ func (k Keeper) EstimateGasInternal(c context.Context, req *types.EthCallRequest
 		}
 	}
 
-	// TODO: Recap the highest gas limit with account's available balance.
+	// Normalize the max fee per gas the call is willing to spend.
+	var feeCap *big.Int
+	if args.GasPrice != nil && (args.MaxFeePerGas != nil || args.MaxPriorityFeePerGas != nil) {
+		return &types.EstimateGasResponse{Gas: 0}, errors.New("both gasPrice and (maxFeePerGas or maxPriorityFeePerGas) specified")
+	} else if args.GasPrice != nil {
+		feeCap = args.GasPrice.ToInt()
+	} else if args.MaxFeePerGas != nil {
+		feeCap = args.MaxFeePerGas.ToInt()
+	} else {
+		feeCap = common.Big0
+	}
+
+	// Recap the highest gas limit with account's available balance.
+	if feeCap.BitLen() != 0 {
+		balance := k.GetBalance(ctx, *args.From)
+		available := new(big.Int).Set(balance)
+		if args.Value != nil {
+			if args.Value.ToInt().Cmp(available) >= 0 {
+				return &types.EstimateGasResponse{Gas: 0}, core.ErrInsufficientFundsForTransfer
+			}
+			available.Sub(available, args.Value.ToInt())
+		}
+		allowance := new(big.Int).Div(available, feeCap)
+
+		// If the allowance is larger than maximum uint64, skip checking
+		if allowance.IsUint64() && hi > allowance.Uint64() {
+			transfer := args.Value
+			if transfer == nil {
+				transfer = new(hexutil.Big)
+			}
+			log.Warn("Gas estimation capped by limited funds", "original", hi, "balance", balance,
+				"sent", transfer.ToInt(), "maxFeePerGas", feeCap, "fundable", allowance)
+			hi = allowance.Uint64()
+		}
+	}
 
 	// Recap the highest gas allowance with specified gascap.
 	if req.GasCap != 0 && hi > req.GasCap {
+		log.Warn("Caller gas above allowance, capping", "requested", hi, "cap", gasCap)
 		hi = req.GasCap
 	}
 
@@ -564,7 +604,7 @@ func (k *Keeper) traceTx(
 		AccessList:        tx.AccessList(),
 		SkipAccountChecks: false,
 	}
-	
+
 	// msg, err := tx.AsMessage(signer, cfg.BaseFee)
 	// if err != nil {
 	// 	return nil, 0, status.Error(codes.Internal, err.Error())
@@ -693,7 +733,6 @@ func (k Keeper) EthCallWithOverride(c context.Context, req *types.EthCallWithOve
 	return res, nil
 }
 
-
 // EstimateGas implements eth_estimateGas rpc api.
 func (k Keeper) EstimateGasWithOverride(c context.Context, req *types.EthCallWithOverrideRequest) (*types.EstimateGasResponse, error) {
 	return k.EstimateGasInternalWithOveride(c, req, types.RPC)
@@ -729,6 +768,10 @@ func (k Keeper) EstimateGasInternalWithOveride(c context.Context, req *types.Eth
 		gasCap uint64
 	)
 
+	if args.From == nil {
+		args.From = new(common.Address)
+	}
+
 	// Determine the highest gas limit can be used during the estimation.
 	if args.Gas != nil && uint64(*args.Gas) >= ethparams.TxGas {
 		hi = uint64(*args.Gas)
@@ -739,6 +782,42 @@ func (k Keeper) EstimateGasInternalWithOveride(c context.Context, req *types.Eth
 			hi = uint64(params.Block.MaxGas)
 		} else {
 			hi = req.GasCap
+		}
+	}
+
+	// Normalize the max fee per gas the call is willing to spend.
+	var feeCap *big.Int
+	if args.GasPrice != nil && (args.MaxFeePerGas != nil || args.MaxPriorityFeePerGas != nil) {
+		return &types.EstimateGasResponse{Gas: 0}, errors.New("both gasPrice and (maxFeePerGas or maxPriorityFeePerGas) specified")
+	} else if args.GasPrice != nil {
+		feeCap = args.GasPrice.ToInt()
+	} else if args.MaxFeePerGas != nil {
+		feeCap = args.MaxFeePerGas.ToInt()
+	} else {
+		feeCap = common.Big0
+	}
+
+	// Recap the highest gas limit with account's available balance.
+	if feeCap.BitLen() != 0 {
+		balance := k.GetBalance(ctx, *args.From)
+		available := new(big.Int).Set(balance)
+		if args.Value != nil {
+			if args.Value.ToInt().Cmp(available) >= 0 {
+				return &types.EstimateGasResponse{Gas: 0}, core.ErrInsufficientFundsForTransfer
+			}
+			available.Sub(available, args.Value.ToInt())
+		}
+		allowance := new(big.Int).Div(available, feeCap)
+
+		// If the allowance is larger than maximum uint64, skip checking
+		if allowance.IsUint64() && hi > allowance.Uint64() {
+			transfer := args.Value
+			if transfer == nil {
+				transfer = new(hexutil.Big)
+			}
+			log.Warn("Gas estimation capped by limited funds", "original", hi, "balance", balance,
+				"sent", transfer.ToInt(), "maxFeePerGas", feeCap, "fundable", allowance)
+			hi = allowance.Uint64()
 		}
 	}
 
@@ -808,7 +887,6 @@ func (k Keeper) EstimateGasInternalWithOveride(c context.Context, req *types.Eth
 			gasMeter := ethermint.NewInfiniteGasMeterWithLimit(msg.GasLimit)
 			tmpCtx = tmpCtx.WithGasMeter(gasMeter)
 		}
-
 
 		rpcOverides := rpcrtypes.FromProtoStateOverride(req.Overrides)
 
