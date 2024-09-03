@@ -417,27 +417,28 @@ func (k Keeper) EstimateGasInternal(c context.Context, req *types.EthCallRequest
 	// Execute the binary search and hone in on an executable gas limit
 	hi, err = types.BinSearch(lo, hi, executable)
 	if err != nil {
+		log.Error("Error Estimate Gas Because: ", err)
 		return nil, err
 	}
 
-	// Reject the transaction as invalid if it still fails at the highest allowance
-	if hi == gasCap {
-		failed, result, err := executable(hi)
-		if err != nil {
-			return nil, err
-		}
+	// // Reject the transaction as invalid if it still fails at the highest allowance
+	// if hi == gasCap {
+	// 	failed, result, err := executable(hi)
+	// 	if err != nil {
+	// 		return nil, err
+	// 	}
 
-		if failed {
-			if result != nil && result.VmError != vm.ErrOutOfGas.Error() {
-				if result.VmError == vm.ErrExecutionReverted.Error() {
-					return nil, types.NewExecErrorWithReason(result.Ret)
-				}
-				return nil, errors.New(result.VmError)
-			}
-			// Otherwise, the specified gas cap is too low
-			return nil, fmt.Errorf("gas required exceeds allowance (%d)", gasCap)
-		}
-	}
+	// 	if failed {
+	// 		if result != nil && result.VmError != vm.ErrOutOfGas.Error() {
+	// 			if result.VmError == vm.ErrExecutionReverted.Error() {
+	// 				return nil, types.NewExecErrorWithReason(result.Ret)
+	// 			}
+	// 			return nil, errors.New(result.VmError)
+	// 		}
+	// 		// Otherwise, the specified gas cap is too low
+	// 		return nil, fmt.Errorf("gas required exceeds allowance (%d)", gasCap)
+	// 	}
+	// }
 	return &types.EstimateGasResponse{Gas: hi}, nil
 }
 
