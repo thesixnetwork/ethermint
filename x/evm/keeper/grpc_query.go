@@ -347,6 +347,7 @@ func (k Keeper) EstimateGasInternal(c context.Context, req *types.EthCallRequest
 	gasCap = hi
 	cfg, err := k.EVMConfig(ctx)
 	if err != nil {
+		fmt.Printf("################ EVMConfig %v ################\n", err)
 		return nil, status.Error(codes.Internal, "failed to load evm config")
 	}
 
@@ -359,6 +360,7 @@ func (k Keeper) EstimateGasInternal(c context.Context, req *types.EthCallRequest
 	// convert the tx args to an ethereum message
 	msg, err := args.ToMessage(req.GasCap, cfg.BaseFee)
 	if err != nil {
+		fmt.Printf("################ args.ToMessage %v ################\n", err)
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 
@@ -399,6 +401,7 @@ func (k Keeper) EstimateGasInternal(c context.Context, req *types.EthCallRequest
 			acct.Nonce = nonce + 1
 			err = k.SetAccount(tmpCtx, from, *acct)
 			if err != nil {
+				fmt.Printf("################ Error SetAccount %v ################\n", err)
 				return true, nil, err
 			}
 			// resetting the gasMeter after increasing the sequence to have an accurate gas estimation on EVM extensions transactions
@@ -411,7 +414,7 @@ func (k Keeper) EstimateGasInternal(c context.Context, req *types.EthCallRequest
 			if errors.Is(err, core.ErrIntrinsicGas) {
 				return true, nil, nil // Special case, raise gas limit
 			}
-			log.Error("Error ApplyMessageWithConfig: ", err)
+			fmt.Printf("################ Error ApplyMessageWithConfig %v ################\n", err)
 			return true, nil, err // Bail out
 		}
 		return len(rsp.VmError) > 0, rsp, nil
@@ -420,7 +423,7 @@ func (k Keeper) EstimateGasInternal(c context.Context, req *types.EthCallRequest
 	// Execute the binary search and hone in on an executable gas limit
 	hi, err = types.BinSearch(lo, hi, executable)
 	if err != nil {
-		log.Error("Error Estimate Gas Because: ", err)
+		fmt.Printf("################ Error Estimate Gas Because %v ################", err)
 		return nil, err
 	}
 
