@@ -378,6 +378,8 @@ func (k Keeper) EstimateGasInternal(c context.Context, req *types.EthCallRequest
 			GasTipCap:         msg.GasTipCap,
 			Data:              msg.Data,
 			AccessList:        msg.AccessList,
+			BlobGasFeeCap: 	   msg.BlobGasFeeCap,
+			BlobHashes:        msg.BlobHashes,
 			SkipAccountChecks: false,
 		}
 
@@ -409,6 +411,7 @@ func (k Keeper) EstimateGasInternal(c context.Context, req *types.EthCallRequest
 			if errors.Is(err, core.ErrIntrinsicGas) {
 				return true, nil, nil // Special case, raise gas limit
 			}
+			log.Error("Error ApplyMessageWithConfig: ", err)
 			return true, nil, err // Bail out
 		}
 		return len(rsp.VmError) > 0, rsp, nil
