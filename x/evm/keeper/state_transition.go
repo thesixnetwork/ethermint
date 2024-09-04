@@ -1,7 +1,6 @@
 package keeper
 
 import (
-	"fmt"
 	"math"
 	"math/big"
 
@@ -113,9 +112,9 @@ func (k Keeper) VMConfig(ctx sdk.Context, msg core.Message, cfg *types.EVMConfig
 
 	return vm.Config{
 		EnablePreimageRecording: debug,
-		Tracer:    tracer,
-		NoBaseFee: noBaseFee,
-		ExtraEips: cfg.Params.EIPs(),
+		Tracer:                  tracer,
+		NoBaseFee:               noBaseFee,
+		ExtraEips:               cfg.Params.EIPs(),
 	}
 }
 
@@ -358,11 +357,6 @@ func (k *Keeper) ApplyTransaction(ctx sdk.Context, tx *ethtypes.Transaction) (*t
 //
 // If commit is true, the `StateDB` will be committed, otherwise discarded.
 func (k *Keeper) ApplyMessageWithConfig(ctx sdk.Context, msg core.Message, tracer vm.EVMLogger, commit bool, cfg *types.EVMConfig, txConfig statedb.TxConfig) (*types.MsgEthereumTxResponse, error) {
-	var (
-		ret   []byte // return bytes from evm execution
-		vmErr error  // vm errors do not effect consensus and are therefore not assigned to err
-	)
-
 	// return error if contract creation or call are disabled through governance
 	if !cfg.Params.EnableCreate && msg.To == nil {
 		return nil, sdkerrors.Wrap(types.ErrCreateDisabled, "failed to create new contract")
@@ -370,11 +364,22 @@ func (k *Keeper) ApplyMessageWithConfig(ctx sdk.Context, msg core.Message, trace
 		return nil, sdkerrors.Wrap(types.ErrCallDisabled, "failed to call contract")
 	}
 
+	var (
+		sender           = vm.AccountRef(msg.From)
+		rules            = cfg.ChainConfig.Rules(big.NewInt(ctx.BlockHeight()), cfg.ChainConfig.MergeNetsplitBlock != nil, uint64(ctx.BlockTime().Unix()))
+		contractCreation = msg.To == nil
+	)
+
 	stateDB := statedb.New(ctx, k, txConfig)
+	// currentNonce := stateDB.GetNonce(msg.From)
+	// if msg.Nonce < currentNonce {
+	// 	return nil, sdkerrors.Wrapf(types.ErrInvalidNonce, "invalid nonce; got %d, expected %d", msg.Nonce, currentNonce)
+	// } else if msg.Nonce > currentNonce {
+	// 	return nil, sdkerrors.Wrapf(types.ErrInvalidNonce, "nonce too high; got %d, expected %d", msg.Nonce, currentNonce)
+	// }
+
 	evm := k.NewEVM(ctx, msg, cfg, tracer, stateDB)
 
-	sender := vm.AccountRef(msg.From)
-	contractCreation := msg.To == nil
 	isLondon := cfg.ChainConfig.IsLondon(evm.Context.BlockNumber)
 
 	intrinsicGas, err := k.GetEthIntrinsicGas(ctx, msg, cfg.ChainConfig, contractCreation)
@@ -391,21 +396,36 @@ func (k *Keeper) ApplyMessageWithConfig(ctx sdk.Context, msg core.Message, trace
 
 	leftoverGas := msg.GasLimit - intrinsicGas
 
-	// access list preparation is moved from ante handler to here, because it's needed when `ApplyMessage` is called
-	// under contexts where ante handlers are not run, for example `eth_call` and `eth_estimateGas`.
-	if rules := cfg.ChainConfig.Rules(big.NewInt(ctx.BlockHeight()), cfg.ChainConfig.MergeNetsplitBlock != nil, uint64(ctx.BlockTime().Unix())); rules.IsBerlin {
-		stateDB.Prepare(rules, msg.From, cfg.CoinBase, msg.To, vm.ActivePrecompiles(rules), msg.AccessList)
-	}
+	stateDB.Prepare(rules, msg.From, cfg.CoinBase, msg.To, vm.ActivePrecompiles(rules), msg.AccessList)
+
+	var (
+		ret   []byte // return bytes from evm execution
+		vmErr error  // vm errors do not effect consensus and are therefore not assigned to err
+	)
 
 	if contractCreation {
-		// take over the nonce management from evm:
+				// take over the nonce management from evm:
 		// - reset sender's nonce to msg.Nonce() before calling evm.
 		// - increase sender's nonce by one no matter the result.
 		stateDB.SetNonce(sender.Address(), msg.Nonce)
 		ret, _, leftoverGas, vmErr = evm.Create(sender, msg.Data, leftoverGas, msg.Value)
 		stateDB.SetNonce(sender.Address(), msg.Nonce+1)
+
+		// TODO: FIX THIS LATER TO SUPPORT MULTI TX PER BLOCK 
+		// stateDB.SetNonce(msg.From, currentNonce)
+		// ret, _, leftoverGas, vmErr = evm.Create(sender, msg.Data, leftoverGas, msg.Value)
+		// stateDB.SetNonce(msg.From, currentNonce+1)
 	} else {
 		ret, leftoverGas, vmErr = evm.Call(sender, *msg.To, msg.Data, leftoverGas, msg.Value)
+
+		// TODO: FIX THIS LATER TO SUPPORT MULTI TX PER BLOCK 
+		// stateDB.SetNonce(msg.From, currentNonce+1)
+	}
+
+	// EVM execution error needs to be available for the JSON-RPC client
+	var vmError string
+	if vmErr != nil {
+		vmError = vmErr.Error()
 	}
 
 	refundQuotient := params.RefundQuotient
@@ -427,12 +447,6 @@ func (k *Keeper) ApplyMessageWithConfig(ctx sdk.Context, msg core.Message, trace
 	}
 
 	temporaryGasUsed -= refund
-
-	// EVM execution error needs to be available for the JSON-RPC client
-	var vmError string
-	if vmErr != nil {
-		vmError = vmErr.Error()
-	}
 
 	// The dirty states in `StateDB` is either committed or discarded after return
 	if commit {
@@ -463,9 +477,6 @@ func (k *Keeper) ApplyMessageWithConfigAndStateOverride(ctx sdk.Context, msg cor
 		ret   []byte // return bytes from evm execution
 		vmErr error  // vm errors do not effect consensus and are therefore not assigned to err
 	)
-
-	fmt.Printf("################### OVERRIDES: %v ################\n", overrides)
-
 	// return error if contract creation or call are disabled through governance
 	if !cfg.Params.EnableCreate && msg.To == nil {
 		return nil, sdkerrors.Wrap(types.ErrCreateDisabled, "failed to create new contract")
@@ -637,4 +648,59 @@ func (k Keeper) GetCoinbaseAddress(ctx sdk.Context) (common.Address, error) {
 
 	coinbase := common.BytesToAddress(validator.GetOperator())
 	return coinbase, nil
+}
+
+
+func (k *Keeper) PreCheck(ctx sdk.Context, msg core.Message, cfg *types.EVMConfig) error {
+	// 1. Nonce check
+	stateDB := statedb.New(ctx, k, statedb.NewEmptyTxConfig(common.BytesToHash(ctx.HeaderHash().Bytes())))
+	stNonce := stateDB.GetNonce(msg.From)
+	if msgNonce := msg.Nonce; stNonce < msgNonce {
+		return sdkerrors.Wrapf(types.ErrInvalidNonce, "address %v, tx: %d state: %d", msg.From.Hex(), msgNonce, stNonce)
+	} else if stNonce > msgNonce {
+		return sdkerrors.Wrapf(types.ErrInvalidNonce, "address %v, tx: %d state: %d", msg.From.Hex(), msgNonce, stNonce)
+	}
+
+	// 2. Sender EOA check
+	codeHash := stateDB.GetCodeHash(msg.From)
+	if codeHash != (common.Hash{}) && codeHash != types.EmptyCodeHash {
+		return sdkerrors.Wrapf(types.ErrInvalidSender, "address %v, codehash: %s", msg.From.Hex(), codeHash)
+	}
+
+	// 3. Fee cap checks (for EIP-1559 transactions)
+	if cfg.ChainConfig.IsLondon(big.NewInt(ctx.BlockHeight())) {
+		// Skip the checks if gas fields are zero and baseFee was explicitly disabled
+		skipCheck := k.feeMarketKeeper.GetParams(ctx).NoBaseFee && msg.GasFeeCap.BitLen() == 0 && msg.GasTipCap.BitLen() == 0
+		if !skipCheck {
+			if l := msg.GasFeeCap.BitLen(); l > 256 {
+				return sdkerrors.Wrapf(types.ErrInvalidGasCap, "address %v, maxFeePerGas bit length: %d", msg.From.Hex(), l)
+			}
+			if l := msg.GasTipCap.BitLen(); l > 256 {
+				return sdkerrors.Wrapf(types.ErrInvalidGasCap, "address %v, maxPriorityFeePerGas bit length: %d", msg.From.Hex(), l)
+			}
+			if msg.GasFeeCap.Cmp(msg.GasTipCap) < 0 {
+				return sdkerrors.Wrapf(types.ErrInvalidGasCap, "address %v, maxPriorityFeePerGas: %s, maxFeePerGas: %s", msg.From.Hex(), msg.GasTipCap, msg.GasFeeCap)
+			}
+			baseFee := cfg.BaseFee
+			if msg.GasFeeCap.Cmp(baseFee) < 0 {
+				return sdkerrors.Wrapf(types.ErrInvalidGasCap, "address %v, maxFeePerGas: %s, baseFee: %s", msg.From.Hex(), msg.GasFeeCap, baseFee)
+			}
+		}
+	}
+
+	// 4. Check for sufficient balance
+	if msg.Value.Sign() > 0 && !k.CanTransfer(ctx, msg.From, msg.Value) {
+		return sdkerrors.Wrapf(types.ErrInsufficientBalance, "address %v", msg.From.Hex())
+	}
+
+	// 5. Ensure gas limit is sufficient
+	intrinsicGas, err := k.GetEthIntrinsicGas(ctx, msg, cfg.ChainConfig, msg.To == nil)
+	if err != nil {
+		return sdkerrors.Wrap(err, "failed to compute intrinsic gas")
+	}
+	if msg.GasLimit < intrinsicGas {
+		return sdkerrors.Wrapf(types.ErrInvalidGasFee, "intrinsic gas too low: %d < %d", msg.GasLimit, intrinsicGas)
+	}
+
+	return nil
 }

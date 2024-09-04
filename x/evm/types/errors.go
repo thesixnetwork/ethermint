@@ -34,6 +34,9 @@ const (
 	codeErrGasOverflow
 	codeErrInvalidAccount
 	codeErrInvalidGasLimit
+	codeErrInvalidNonce
+	codeErrInvalidSender
+	codeInsufficientBalance
 )
 
 var ErrPostTxProcessing = errors.New("failed to execute post processing")
@@ -101,6 +104,12 @@ var (
 
 	// ErrInvalidGasLimit returns an error if gas limit value is invalid
 	ErrInvalidGasLimit = sdkerrors.Register(ModuleName, codeErrInvalidGasLimit, "invalid gas limit")
+	
+	ErrInvalidNonce = sdkerrors.Register(ModuleName, codeErrInvalidNonce, "invalid nonce")
+	
+	ErrInvalidSender = sdkerrors.Register(ModuleName, codeErrInvalidSender, "invalid sender")
+
+	ErrInsufficientBalance = sdkerrors.Register(ModuleName, codeInsufficientBalance, "InsufficientBalance")
 )
 
 // NewExecErrorWithReason unpacks the revert return bytes and returns a wrapped error

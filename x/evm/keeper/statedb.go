@@ -50,7 +50,7 @@ func (k *Keeper) GetCodeHash(ctx sdk.Context, addr common.Address) common.Hash {
 	store := prefix.NewStore(ctx.KVStore(k.storeKey), types.KeyPrefixCodeHash)
 	bz := store.Get(addr.Bytes())
 	if len(bz) == 0 {
-		return common.BytesToHash(types.EmptyCodeHash)
+		return common.BytesToHash(types.EmptyCodeHash.Bytes())
 	}
 
 	return common.BytesToHash(bz)

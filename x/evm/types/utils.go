@@ -13,7 +13,7 @@ import (
 	"github.com/ethereum/go-ethereum/crypto"
 )
 
-var EmptyCodeHash = crypto.Keccak256(nil)
+var EmptyCodeHash = crypto.Keccak256Hash(nil)
 
 // DecodeTxResponse decodes an protobuf-encoded byte slice into TxResponse
 func DecodeTxResponse(in []byte) (*MsgEthereumTxResponse, error) {

@@ -27,6 +27,7 @@ func NewEmptyAccount() *Account {
 	return &Account{
 		Balance:  new(big.Int),
 		CodeHash: emptyCodeHash,
+		Nonce: uint64(0),
 	}
 }
 

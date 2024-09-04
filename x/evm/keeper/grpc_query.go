@@ -401,7 +401,6 @@ func (k Keeper) EstimateGasInternal(c context.Context, req *types.EthCallRequest
 			acct.Nonce = nonce + 1
 			err = k.SetAccount(tmpCtx, from, *acct)
 			if err != nil {
-				fmt.Printf("################ Error SetAccount %v ################\n", err)
 				return true, nil, err
 			}
 			// resetting the gasMeter after increasing the sequence to have an accurate gas estimation on EVM extensions transactions
@@ -414,7 +413,6 @@ func (k Keeper) EstimateGasInternal(c context.Context, req *types.EthCallRequest
 			if errors.Is(err, core.ErrIntrinsicGas) {
 				return true, nil, nil // Special case, raise gas limit
 			}
-			fmt.Printf("################ Error ApplyMessageWithConfig %v ################\n", err)
 			return true, nil, err // Bail out
 		}
 		return len(rsp.VmError) > 0, rsp, nil
@@ -423,28 +421,9 @@ func (k Keeper) EstimateGasInternal(c context.Context, req *types.EthCallRequest
 	// Execute the binary search and hone in on an executable gas limit
 	hi, err = types.BinSearch(lo, hi, executable)
 	if err != nil {
-		fmt.Printf("################ Error Estimate Gas Because %v ################", err)
 		return nil, err
 	}
 
-	// // Reject the transaction as invalid if it still fails at the highest allowance
-	// if hi == gasCap {
-	// 	failed, result, err := executable(hi)
-	// 	if err != nil {
-	// 		return nil, err
-	// 	}
-
-	// 	if failed {
-	// 		if result != nil && result.VmError != vm.ErrOutOfGas.Error() {
-	// 			if result.VmError == vm.ErrExecutionReverted.Error() {
-	// 				return nil, types.NewExecErrorWithReason(result.Ret)
-	// 			}
-	// 			return nil, errors.New(result.VmError)
-	// 		}
-	// 		// Otherwise, the specified gas cap is too low
-	// 		return nil, fmt.Errorf("gas required exceeds allowance (%d)", gasCap)
-	// 	}
-	// }
 	return &types.EstimateGasResponse{Gas: hi}, nil
 }
 
@@ -609,6 +588,8 @@ func (k *Keeper) traceTx(
 		GasTipCap:         tx.GasTipCap(),
 		Data:              tx.Data(),
 		AccessList:        tx.AccessList(),
+		BlobGasFeeCap: 	   tx.BlobGasFeeCap(),
+		BlobHashes:        tx.BlobHashes(),
 		SkipAccountChecks: false,
 	}
 
@@ -636,18 +617,6 @@ func (k *Keeper) traceTx(
 	}
 
 	tracer = logger.NewStructLogger(&logConfig)
-
-	// tCtx := &tracers.Context{
-	// 	BlockHash: txConfig.BlockHash,
-	// 	TxIndex:   int(txConfig.TxIndex),
-	// 	TxHash:    txConfig.TxHash,
-	// }
-
-	// if traceConfig.Tracer != "" {
-	// 	if tracer, err = tracers.New(traceConfig.Tracer, tCtx); err != nil {
-	// 		return nil, 0, status.Error(codes.Internal, err.Error())
-	// 	}
-	// }
 
 	// Define a meaningful timeout of a single transaction trace
 	if traceConfig.Timeout != "" {
@@ -729,8 +698,6 @@ func (k Keeper) EthCallWithOverride(c context.Context, req *types.EthCallWithOve
 
 	rpcOverides := rpcrtypes.FromProtoStateOverride(req.Overrides)
 
-	fmt.Printf("################### OVERRIDES: %v ################\n", rpcOverides)
-
 	// pass false to not commit StateDB
 	res, err := k.ApplyMessageWithConfigAndStateOverride(ctx, msg, nil, false, cfg, txConfig, &rpcOverides)
 	if err != nil {
@@ -740,17 +707,10 @@ func (k Keeper) EthCallWithOverride(c context.Context, req *types.EthCallWithOve
 	return res, nil
 }
 
-// EstimateGas implements eth_estimateGas rpc api.
 func (k Keeper) EstimateGasWithOverride(c context.Context, req *types.EthCallWithOverrideRequest) (*types.EstimateGasResponse, error) {
 	return k.EstimateGasInternalWithOveride(c, req, types.RPC)
 }
 
-// EstimateGasInternal returns the gas estimation for the corresponding request.
-// This function is called from the RPC client (eth_estimateGas) and internally
-// by the CallEVMWithData function in the x/erc20 module keeper.
-// When called from the RPC client, we need to reset the gas meter before
-// simulating the transaction to have
-// an accurate gas estimation for EVM extensions transactions.
 func (k Keeper) EstimateGasInternalWithOveride(c context.Context, req *types.EthCallWithOverrideRequest, fromType types.CallType) (*types.EstimateGasResponse, error) {
 	if req == nil {
 		return nil, status.Error(codes.InvalidArgument, "empty request")
@@ -869,6 +829,8 @@ func (k Keeper) EstimateGasInternalWithOveride(c context.Context, req *types.Eth
 			GasTipCap:         msg.GasTipCap,
 			Data:              msg.Data,
 			AccessList:        msg.AccessList,
+			BlobGasFeeCap:     msg.BlobGasFeeCap,
+			BlobHashes:        msg.BlobHashes,
 			SkipAccountChecks: false,
 		}
 

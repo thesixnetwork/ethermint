@@ -1,6 +1,7 @@
 package keeper
 
 import (
+	"math"
 	"math/big"
 
 	"github.com/cosmos/cosmos-sdk/codec"
@@ -245,12 +246,12 @@ func (k *Keeper) GetAccountWithoutBalance(ctx sdk.Context, addr common.Address) 
 	codeHash := types.EmptyCodeHash
 	ethAcct, ok := acct.(ethermint.EthAccountI)
 	if ok {
-		codeHash = ethAcct.GetCodeHash().Bytes()
+		codeHash = ethAcct.GetCodeHash()
 	}
 
 	return &statedb.Account{
 		Nonce:    acct.GetSequence(),
-		CodeHash: codeHash,
+		CodeHash: codeHash.Bytes(),
 	}
 }
 
@@ -264,7 +265,7 @@ func (k *Keeper) GetAccountOrEmpty(ctx sdk.Context, addr common.Address) statedb
 	// empty account
 	return statedb.Account{
 		Balance:  new(big.Int),
-		CodeHash: types.EmptyCodeHash,
+		CodeHash: types.EmptyCodeHash.Bytes(),
 	}
 }
 
@@ -352,4 +353,12 @@ func (k Keeper) AddTransientGasUsed(ctx sdk.Context, gasUsed uint64) (uint64, er
 	}
 	k.SetTransientGasUsed(ctx, result)
 	return result, nil
+}
+
+func (k *Keeper) GetGasPool() core.GasPool {
+	return math.MaxUint64
+}
+
+func (k *Keeper) CanTransfer(ctx sdk.Context, addr common.Address, value *big.Int) bool {
+	return k.GetBalance(ctx, addr).Cmp(value) >= 0
 }

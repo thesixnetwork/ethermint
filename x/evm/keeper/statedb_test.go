@@ -239,7 +239,7 @@ func (suite *KeeperTestSuite) TestGetCodeHash() {
 		{
 			"account not EthAccount type, EmptyCodeHash",
 			addr,
-			common.BytesToHash(types.EmptyCodeHash),
+			common.BytesToHash(types.EmptyCodeHash.Bytes()),
 			func(vm.StateDB) {},
 		},
 		{

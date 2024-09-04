@@ -20,7 +20,7 @@ build:
 init:
   home: "$HOME/.ethermintd"
   app:
-    log_level: trace
+    log_level: debug
     api:
       enable: true
     json-rpc:
@@ -46,3 +46,14 @@ genesis:
     evm:
       params:
         evm_denom: "aphoton"
+    feemarket:
+      params:
+        base_fee: "50000000000"
+        base_fee_change_denominator: 300
+        elasticity_multiplier: 4
+        enable_height: "0"
+        min_gas_multiplier: "0.5"
+        min_gas_price: "50000000000.0"
+        no_base_fee: false
+        legacy_base_fee: "1000000000"
+        legacy_min_gas_price: "1000000000.0"

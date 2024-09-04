@@ -298,7 +298,7 @@ func initTestnetFiles(
 		genBalances = append(genBalances, banktypes.Balance{Address: addr.String(), Coins: coins.Sort()})
 		genAccounts = append(genAccounts, &ethermint.EthAccount{
 			BaseAccount: authtypes.NewBaseAccount(addr, nil, 0, 0),
-			CodeHash:    common.BytesToHash(evmtypes.EmptyCodeHash).Hex(),
+			CodeHash:    common.BytesToHash(evmtypes.EmptyCodeHash.Bytes()).Hex(),
 		})
 
 		valTokens := sdk.TokensFromConsensusPower(100, ethermint.PowerReduction)

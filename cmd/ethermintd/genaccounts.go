@@ -130,7 +130,7 @@ contain valid denominations. Accounts may optionally be supplied with vesting pa
 			} else {
 				genAccount = &ethermint.EthAccount{
 					BaseAccount: baseAccount,
-					CodeHash:    common.BytesToHash(evmtypes.EmptyCodeHash).Hex(),
+					CodeHash:    common.BytesToHash(evmtypes.EmptyCodeHash.Bytes()).Hex(),
 				}
 			}
 

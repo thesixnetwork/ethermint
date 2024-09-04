@@ -413,7 +413,7 @@ func New(l Logger, baseDir string, cfg Config) (*Network, error) {
 		genBalances = append(genBalances, banktypes.Balance{Address: addr.String(), Coins: balances.Sort()})
 		genAccounts = append(genAccounts, &ethermint.EthAccount{
 			BaseAccount: authtypes.NewBaseAccount(addr, nil, 0, 0),
-			CodeHash:    common.BytesToHash(evmtypes.EmptyCodeHash).Hex(),
+			CodeHash:    common.BytesToHash(evmtypes.EmptyCodeHash.Bytes()).Hex(),
 		})
 
 		commission, err := sdk.NewDecFromStr("0.5")
