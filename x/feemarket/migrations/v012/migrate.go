@@ -1,4 +1,4 @@
-package v011
+package v012
 
 import (
 	sdk "github.com/cosmos/cosmos-sdk/types"
@@ -23,7 +23,7 @@ func MigrateStore(ctx sdk.Context, paramstore *paramtypes.Subspace) error {
 	return nil
 }
 
-// MigrateJSON accepts exported v0.11 x/feemarket genesis state and migrates it to
+// MigrateJSON accepts exported v0.12 x/feemarket genesis state and migrates it to
 // v0.12 x/feemarket genesis state. The migration includes:
 // FIX Broken when perform legacy tx
 // - add LegacyTXMinGasPrice param

@@ -1,4 +1,4 @@
-package v011_test
+package v012_test
 
 import (
 	"fmt"
@@ -75,7 +75,7 @@ func TestMigrateJSON(t *testing.T) {
 			"base_fee": "1000000000",
 			"no_base_fee": false
 		}
-  }`
+  	}`
 	encCfg := encoding.MakeConfig(app.ModuleBasics)
 	var genState v010types.GenesisState
 	err := encCfg.Marshaler.UnmarshalJSON([]byte(rawJson), &genState)

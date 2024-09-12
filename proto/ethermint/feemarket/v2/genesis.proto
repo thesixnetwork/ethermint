@@ -1,10 +1,10 @@
 syntax = "proto3";
-package ethermint.feemarket.v1;
+package ethermint.feemarket.v2;
 
 import "gogoproto/gogo.proto";
-import "ethermint/feemarket/v1/feemarket.proto";
+import "ethermint/feemarket/v2/feemarket.proto";
 
-option go_package = "github.com/evmos/ethermint/x/feemarket/types/v1";
+option go_package = "github.com/evmos/ethermint/x/feemarket/types";
 
 // GenesisState defines the feemarket module's genesis state.
 message GenesisState {
