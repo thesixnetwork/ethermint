@@ -86,6 +86,11 @@ service Query {
   rpc EstimateGasWithOverride(EthCallWithOverrideRequest) returns (EstimateGasResponse) {
     option (google.api.http).get = "/ethermint/evm/v1/estimate_gas_overides";
   }
+
+  // TraceTx implements the `debug_traceTransaction` rpc api
+  rpc TraceCall(QueryTraceCallRequest) returns (QueryTraceTxResponse) {
+    option (google.api.http).get = "/ethermint/evm/v1/trace_call";
+  }
 }
 
 // QueryAccountRequest is the request type for the Query/Account RPC method.
@@ -270,6 +275,15 @@ message QueryTraceTxRequest {
   google.protobuf.Timestamp block_time = 7 [(gogoproto.nullable) = false, (gogoproto.stdtime) = true];
 }
 
+message QueryTraceCallRequest {
+  // same json format as the json rpc api.
+  bytes args = 1;
+  // the default gas cap to be used
+  uint64 gas_cap = 2;
+  // TraceConfig holds extra parameters to trace functions.
+  TraceCallConfig config = 3;
+}
+
 // QueryTraceTxResponse defines TraceTx response
 message QueryTraceTxResponse {
   // response serialized in bytes
@@ -316,4 +330,22 @@ message OverrideAccount {
 // StateOverride is a map of addresses to OverrideAccount.
 message StateOverride {
   map<string, OverrideAccount> accounts = 1; // Mapping of addresses to OverrideAccount
+}
+
+message BlockOverrides {
+  string number = 1;
+  string defficulty = 2;
+  uint64 time = 3;
+  uint64 gas_limit = 4;
+  string coinbase = 5;
+  string random = 6;
+  string base_fee = 7;
+  string blob_base_fee = 8;
+}
+
+
+message TraceCallConfig {
+  TraceConfig trace_config = 1;
+  StateOverride state_overrides = 2;
+  BlockOverrides block_overrieds = 3;
 }

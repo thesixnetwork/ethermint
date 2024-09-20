@@ -495,6 +495,54 @@ func (k Keeper) TraceTx(c context.Context, req *types.QueryTraceTxRequest) (*typ
 	}, nil
 }
 
+
+func (k Keeper) TraceCall(c context.Context, req *types.QueryTraceCallRequest) (*types.QueryTraceTxResponse, error) {
+	if req == nil {
+		return nil, status.Error(codes.InvalidArgument, "empty request")
+	}
+
+	if req.Config.TraceConfig != nil && req.Config.TraceConfig.Limit < 0 {
+		return nil, status.Errorf(codes.InvalidArgument, "output limit cannot be negative, got %d", req.Config.TraceConfig.Limit)
+	}
+
+	ctx := sdk.UnwrapSDKContext(c)
+
+	var args types.TransactionArgs
+	err := json.Unmarshal(req.Args, &args)
+	if err != nil {
+		return nil, status.Error(codes.InvalidArgument, err.Error())
+	}
+
+	cfg, err := k.EVMConfig(ctx)
+	if err != nil {
+		return nil, status.Error(codes.Internal, err.Error())
+	}
+	
+	signer := ethtypes.MakeSigner(cfg.ChainConfig, big.NewInt(ctx.BlockHeight()), uint64(ctx.BlockTime().Unix()))
+
+	txConfig := statedb.NewEmptyTxConfig(common.BytesToHash(ctx.HeaderHash()))
+
+	msg, err := args.ToMessage(req.GasCap, cfg.BaseFee)
+	if err != nil {
+		return nil, status.Error(codes.InvalidArgument, err.Error())
+	}
+
+	result, _, err := k.traceCall(ctx, cfg, txConfig, signer, msg, req.Config, false)
+	if err != nil {
+		// error will be returned with detail status from traceTx
+		return nil, err
+	}
+
+	resultData, err := json.Marshal(result)
+	if err != nil {
+		return nil, status.Error(codes.Internal, err.Error())
+	}
+
+	return &types.QueryTraceTxResponse{
+		Data: resultData,
+	}, nil
+}
+
 // TraceBlock configures a new tracer according to the provided configuration, and
 // executes the given message in the provided environment for all the transactions in the queried block.
 // The return value will be tracer dependent.
@@ -649,6 +697,83 @@ func (k *Keeper) traceTx(
 
 	return &result, txConfig.LogIndex + uint(len(res.Logs)), nil
 }
+
+func (k *Keeper) traceCall(
+	ctx sdk.Context,
+	cfg *types.EVMConfig,
+	txConfig statedb.TxConfig,
+	signer ethtypes.Signer,
+	msg core.Message,
+	config *types.TraceCallConfig,
+	commitMessage bool,
+) (*interface{}, uint, error) {
+	// Assemble the structured logger or the JavaScript tracer
+	var (
+		tracer    tracers.Tracer
+		overrides *ethparams.ChainConfig
+		err       error
+		timeout   = defaultTraceTimeout
+	)
+
+	// msg, err := tx.AsMessage(signer, cfg.BaseFee)
+	// if err != nil {
+	// 	return nil, 0, status.Error(codes.Internal, err.Error())
+	// }
+
+	if config == nil {
+		config = &types.TraceCallConfig{}
+	}
+
+	if config.TraceConfig.Overrides != nil {
+		overrides = config.TraceConfig.Overrides.EthereumConfig(cfg.ChainConfig.ChainID)
+	}
+
+	rpcOverides := rpcrtypes.FromProtoStateOverride(config.StateOverrides)
+
+	logConfig := logger.Config{
+		EnableMemory:     config.TraceConfig.EnableMemory,
+		DisableStorage:   config.TraceConfig.DisableStorage,
+		DisableStack:     config.TraceConfig.DisableStack,
+		EnableReturnData: config.TraceConfig.EnableReturnData,
+		Debug:            config.TraceConfig.Debug,
+		Limit:            int(config.TraceConfig.Limit),
+		Overrides:        overrides,
+	}
+
+	tracer = logger.NewStructLogger(&logConfig)
+
+	// Define a meaningful timeout of a single transaction trace
+	if config.TraceConfig.Timeout != "" {
+		if timeout, err = time.ParseDuration(config.TraceConfig.Timeout); err != nil {
+			return nil, 0, status.Errorf(codes.InvalidArgument, "timeout value: %s", err.Error())
+		}
+	}
+
+	// Handle timeouts and RPC cancellations
+	deadlineCtx, cancel := context.WithTimeout(ctx.Context(), timeout)
+	defer cancel()
+
+	go func() {
+		<-deadlineCtx.Done()
+		if errors.Is(deadlineCtx.Err(), context.DeadlineExceeded) {
+			tracer.Stop(errors.New("execution timeout"))
+		}
+	}()
+
+	res, err := k.ApplyMessageWithConfigAndStateOverride(ctx, msg, tracer, commitMessage, cfg, txConfig, &rpcOverides)
+	if err != nil {
+		return nil, 0, status.Error(codes.Internal, err.Error())
+	}
+
+	var result interface{}
+	result, err = tracer.GetResult()
+	if err != nil {
+		return nil, 0, status.Error(codes.Internal, err.Error())
+	}
+
+	return &result, txConfig.LogIndex + uint(len(res.Logs)), nil
+}
+
 
 // BaseFee implements the Query/BaseFee gRPC method
 func (k Keeper) BaseFee(c context.Context, _ *types.QueryBaseFeeRequest) (*types.QueryBaseFeeResponse, error) {
