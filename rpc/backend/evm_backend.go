@@ -719,6 +719,7 @@ func (b *Backend) SendTransaction(args evmtypes.TransactionArgs) (common.Hash, e
 
 	ethTx := msg.AsTransaction()
 
+	// TODO:: FIX THIS TO BE GOV
 	// // check the local node config in case unprotected txs are disabled
 	// if !b.UnprotectedAllowed() && !ethTx.Protected() {
 	// 	// Ensure only eip155 signed transactions are submitted if EIP155Required is set.

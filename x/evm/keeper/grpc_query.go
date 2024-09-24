@@ -347,7 +347,6 @@ func (k Keeper) EstimateGasInternal(c context.Context, req *types.EthCallRequest
 	gasCap = hi
 	cfg, err := k.EVMConfig(ctx)
 	if err != nil {
-		fmt.Printf("################ EVMConfig %v ################\n", err)
 		return nil, status.Error(codes.Internal, "failed to load evm config")
 	}
 
@@ -360,7 +359,6 @@ func (k Keeper) EstimateGasInternal(c context.Context, req *types.EthCallRequest
 	// convert the tx args to an ethereum message
 	msg, err := args.ToMessage(req.GasCap, cfg.BaseFee)
 	if err != nil {
-		fmt.Printf("################ args.ToMessage %v ################\n", err)
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 
@@ -517,8 +515,6 @@ func (k Keeper) TraceCall(c context.Context, req *types.QueryTraceCallRequest) (
 	if err != nil {
 		return nil, status.Error(codes.Internal, err.Error())
 	}
-	
-	signer := ethtypes.MakeSigner(cfg.ChainConfig, big.NewInt(ctx.BlockHeight()), uint64(ctx.BlockTime().Unix()))
 
 	txConfig := statedb.NewEmptyTxConfig(common.BytesToHash(ctx.HeaderHash()))
 
@@ -527,7 +523,7 @@ func (k Keeper) TraceCall(c context.Context, req *types.QueryTraceCallRequest) (
 		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
 
-	result, _, err := k.traceCall(ctx, cfg, txConfig, signer, msg, req.Config, false)
+	result, _, err := k.traceCall(ctx, cfg, txConfig, msg, req.Config, false)
 	if err != nil {
 		// error will be returned with detail status from traceTx
 		return nil, err
@@ -641,11 +637,6 @@ func (k *Keeper) traceTx(
 		SkipAccountChecks: false,
 	}
 
-	// msg, err := tx.AsMessage(signer, cfg.BaseFee)
-	// if err != nil {
-	// 	return nil, 0, status.Error(codes.Internal, err.Error())
-	// }
-
 	if traceConfig == nil {
 		traceConfig = &types.TraceConfig{}
 	}
@@ -702,7 +693,6 @@ func (k *Keeper) traceCall(
 	ctx sdk.Context,
 	cfg *types.EVMConfig,
 	txConfig statedb.TxConfig,
-	signer ethtypes.Signer,
 	msg core.Message,
 	config *types.TraceCallConfig,
 	commitMessage bool,
@@ -715,11 +705,6 @@ func (k *Keeper) traceCall(
 		timeout   = defaultTraceTimeout
 	)
 
-	// msg, err := tx.AsMessage(signer, cfg.BaseFee)
-	// if err != nil {
-	// 	return nil, 0, status.Error(codes.Internal, err.Error())
-	// }
-
 	if config == nil {
 		config = &types.TraceCallConfig{}
 	}
@@ -728,7 +713,12 @@ func (k *Keeper) traceCall(
 		overrides = config.TraceConfig.Overrides.EthereumConfig(cfg.ChainConfig.ChainID)
 	}
 
-	rpcOverides := rpcrtypes.FromProtoStateOverride(config.StateOverrides)
+	var rpcOverides rpcrtypes.StateOverride
+
+	if config.StateOverrides != nil {
+		rpcOverides = rpcrtypes.FromProtoStateOverride(config.StateOverrides )
+	}
+
 
 	logConfig := logger.Config{
 		EnableMemory:     config.TraceConfig.EnableMemory,
@@ -805,6 +795,12 @@ func (k Keeper) EthCallWithOverride(c context.Context, req *types.EthCallWithOve
 		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
 
+	var rpcOverides rpcrtypes.StateOverride
+
+	if req.Overrides != nil {
+		rpcOverides = rpcrtypes.FromProtoStateOverride(req.Overrides)
+	}
+
 	cfg, err := k.EVMConfig(ctx)
 	if err != nil {
 		return nil, status.Error(codes.Internal, err.Error())
@@ -821,7 +817,6 @@ func (k Keeper) EthCallWithOverride(c context.Context, req *types.EthCallWithOve
 
 	txConfig := statedb.NewEmptyTxConfig(common.BytesToHash(ctx.HeaderHash()))
 
-	rpcOverides := rpcrtypes.FromProtoStateOverride(req.Overrides)
 
 	// pass false to not commit StateDB
 	res, err := k.ApplyMessageWithConfigAndStateOverride(ctx, msg, nil, false, cfg, txConfig, &rpcOverides)

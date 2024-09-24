@@ -83,7 +83,6 @@ func BinSearch(lo, hi uint64, executable func(uint64) (bool, *MsgEthereumTxRespo
 		// call or transaction will never be accepted no matter how much gas it is
 		// assigned. Return the error directly, don't struggle any more.
 		if err != nil {
-			fmt.Printf("################ EVMConfig %v ################\n", err)
 			log.Error("execution error in estimate gas", "err", err)
 			return 0, err
 		}

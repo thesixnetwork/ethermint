@@ -525,6 +525,7 @@ func (e *PublicAPI) SendRawTransaction(data hexutil.Bytes) (common.Hash, error) 
 		return common.Hash{}, err
 	}
 
+	// TODO:: FIX THIS TO BE GOV
 	// // check the local node config in case unprotected txs are disabled
 	// if !e.backend.UnprotectedAllowed() && !tx.Protected() {
 	// 	// Ensure only eip155 signed transactions are submitted if EIP155Required is set.
