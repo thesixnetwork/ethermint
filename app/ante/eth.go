@@ -273,6 +273,13 @@ func (ctd CanTransferDecorator) AnteHandle(ctx sdk.Context, tx sdk.Tx, simulate 
 		legacybaseFee := ctd.evmKeeper.GetLegacyBaseFee(ctx, ethCfg)
 
 		sender, err := signer.Sender(msgEthTx.AsTransaction())
+		if err != nil {
+			return ctx, sdkerrors.Wrapf(
+				err,
+				"failed to create an ethereum core.Message from signer %T", signer,
+			)
+		}
+
 		ethMsg := msgEthTx.AsTransaction()
 
 		// coreMsg, err := msgEthTx.AsMessage(msg, signer, baseFee)
@@ -291,12 +298,7 @@ func (ctd CanTransferDecorator) AnteHandle(ctx sdk.Context, tx sdk.Tx, simulate 
 			BlobGasFeeCap:     ethMsg.BlobGasFeeCap(),
 			SkipAccountChecks: false,
 		}
-		// if err != nil {
-		// 	return ctx, sdkerrors.Wrapf(
-		// 		err,
-		// 		"failed to create an ethereum core.Message from signer %T", signer,
-		// 	)
-		// }
+
 
 		// NOTE: pass in an empty coinbase address and nil tracer as we don't need them for the check below
 		cfg := &evmtypes.EVMConfig{

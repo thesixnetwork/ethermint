@@ -416,6 +416,9 @@ func startInProcess(ctx *server.Context, clientCtx client.Context, appCreator ty
 		httpSrvDone chan struct{}
 	)
 
+
+	fmt.Printf("########################### CONFIG: %v ###########################\n", config.JSONRPC.AllowUnprotectedTxs)
+
 	if config.JSONRPC.Enable {
 		genDoc, err := genDocProvider()
 		if err != nil {
