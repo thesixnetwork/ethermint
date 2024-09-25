@@ -719,8 +719,6 @@ func (b *Backend) SendTransaction(args evmtypes.TransactionArgs) (common.Hash, e
 
 	ethTx := msg.AsTransaction()
 
-	fmt.Printf("############################ b.UnprotectedAllowed(): %v ############################\n", b.UnprotectedAllowed())
-
 	// TODO:: FIX THIS TO BE GOV
 	// check the local node config in case unprotected txs are disabled
 	if !b.UnprotectedAllowed() && !ethTx.Protected() {

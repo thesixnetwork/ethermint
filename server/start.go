@@ -417,8 +417,6 @@ func startInProcess(ctx *server.Context, clientCtx client.Context, appCreator ty
 	)
 
 
-	fmt.Printf("########################### CONFIG: %v ###########################\n", config.JSONRPC.AllowUnprotectedTxs)
-
 	if config.JSONRPC.Enable {
 		genDoc, err := genDocProvider()
 		if err != nil {
