@@ -27,6 +27,7 @@ import (
 	"github.com/cosmos/cosmos-sdk/crypto/keyring"
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	sdkerrors "github.com/cosmos/cosmos-sdk/types/errors"
+	"github.com/cosmos/cosmos-sdk/types/tx/signing"
 	authtypes "github.com/cosmos/cosmos-sdk/x/auth/types"
 
 	"github.com/ethereum/go-ethereum/accounts/keystore"
@@ -74,6 +75,7 @@ func NewPublicAPI(
 			viper.GetString(flags.FlagKeyringBackend),
 			clientCtx.KeyringDir,
 			clientCtx.Input,
+			clientCtx.Codec,
 			hd.EthSecp256k1Option(),
 		)
 		if err != nil {
@@ -447,7 +449,7 @@ func (e *PublicAPI) Sign(address common.Address, data hexutil.Bytes) (hexutil.By
 	}
 
 	// Sign the requested hash with the wallet
-	signature, _, err := e.clientCtx.Keyring.SignByAddress(from, data)
+	signature, _, err := e.clientCtx.Keyring.SignByAddress(from, data, signing.SignMode_SIGN_MODE_DIRECT)
 	if err != nil {
 		e.logger.Error("keyring.SignByAddress failed", "address", address.Hex())
 		return nil, err
@@ -474,7 +476,7 @@ func (e *PublicAPI) SignTypedData(address common.Address, typedData apitypes.Typ
 	}
 
 	// Sign the requested hash with the wallet
-	signature, _, err := e.clientCtx.Keyring.SignByAddress(from, sigHash)
+	signature, _, err := e.clientCtx.Keyring.SignByAddress(from, sigHash, signing.SignMode_SIGN_MODE_DIRECT)
 	if err != nil {
 		e.logger.Error("keyring.SignByAddress failed", "address", address.Hex())
 		return nil, err

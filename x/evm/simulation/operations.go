@@ -25,7 +25,6 @@ import (
 	"github.com/cosmos/cosmos-sdk/x/auth/signing"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/evmos/ethermint/encoding"
-	"github.com/evmos/ethermint/tests"
 	"github.com/evmos/ethermint/x/evm/keeper"
 	"github.com/evmos/ethermint/x/evm/types"
 )
@@ -278,7 +277,7 @@ func GetSignedTx(ctx *simulateContext, txBuilder client.TxBuilder, msg *types.Ms
 	}
 	builder.SetExtensionOptions(option)
 
-	if err := msg.Sign(ethtypes.LatestSignerForChainID(ctx.keeper.ChainID()), tests.NewSigner(prv)); err != nil {
+	if err := msg.Sign(ethtypes.LatestSignerForChainID(ctx.keeper.ChainID()), nil); err != nil {
 		return nil, err
 	}
 

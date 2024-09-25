@@ -9,6 +9,7 @@ import (
 	"github.com/evmos/ethermint/rpc/backend"
 
 	"github.com/cosmos/cosmos-sdk/client"
+	"github.com/cosmos/cosmos-sdk/types/tx/signing"
 
 	"github.com/evmos/ethermint/crypto/hd"
 	ethermint "github.com/evmos/ethermint/types"
@@ -186,7 +187,7 @@ func (api *PrivateAccountAPI) Sign(_ context.Context, data hexutil.Bytes, addr c
 
 	cosmosAddr := sdk.AccAddress(addr.Bytes())
 
-	sig, _, err := api.clientCtx.Keyring.SignByAddress(cosmosAddr, accounts.TextHash(data))
+	sig, _, err := api.clientCtx.Keyring.SignByAddress(cosmosAddr, accounts.TextHash(data), signing.SignMode_SIGN_MODE_DIRECT)
 	if err != nil {
 		api.logger.Error("failed to sign with key", "data", data, "address", addr.String(), "error", err.Error())
 		return nil, err

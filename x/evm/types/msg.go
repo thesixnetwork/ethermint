@@ -13,7 +13,7 @@ import (
 	"github.com/cosmos/cosmos-sdk/x/auth/ante"
 	"github.com/cosmos/cosmos-sdk/x/auth/signing"
 	authtx "github.com/cosmos/cosmos-sdk/x/auth/tx"
-
+	signingTypes "github.com/cosmos/cosmos-sdk/types/tx/signing"
 	"github.com/evmos/ethermint/types"
 
 	"github.com/ethereum/go-ethereum/common"
@@ -228,7 +228,7 @@ func (msg *MsgEthereumTx) Sign(ethSigner ethtypes.Signer, keyringSigner keyring.
 	tx := msg.AsTransaction()
 	txHash := ethSigner.Hash(tx)
 
-	sig, _, err := keyringSigner.SignByAddress(from, txHash.Bytes())
+	sig, _, err := keyringSigner.SignByAddress(from, txHash.Bytes(), signingTypes.SignMode_SIGN_MODE_DIRECT)
 	if err != nil {
 		return err
 	}

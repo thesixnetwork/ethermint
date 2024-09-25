@@ -28,7 +28,7 @@ func TestKeyring(t *testing.T) {
 	dir := t.TempDir()
 	mockIn := strings.NewReader("")
 
-	kr, err := keyring.New("ethermint", keyring.BackendTest, dir, mockIn, EthSecp256k1Option())
+	kr, err := keyring.New("ethermint", keyring.BackendTest, dir, mockIn,nil, EthSecp256k1Option())
 	require.NoError(t, err)
 
 	// fail in retrieving key
