@@ -592,6 +592,8 @@ func (k *Keeper) GetEthIntrinsicGas(ctx sdk.Context, msg core.Message, cfg *para
 	// homestead := cfg.IsHomestead(height)
 	// istanbul := cfg.IsIstanbul(height)
 	// isLondon := cfg.IsLondon(height)
+  //
+
 
 	return core.IntrinsicGas(msg.Data, msg.AccessList, isContractCreation, false, false, false)
 }
