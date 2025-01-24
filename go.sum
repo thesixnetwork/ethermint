@@ -1217,8 +1217,8 @@ github.com/tendermint/tm-db v0.6.7 h1:fE00Cbl0jayAoqlExN6oyQJ7fR/ZtoVOmvPJ//+shu
 github.com/tendermint/tm-db v0.6.7/go.mod h1:byQDzFkZV1syXr/ReXS808NxA2xvyuuVgXOJ/088L6I=
 github.com/thesixnetwork/cosmos-sdk v0.45.6-six-special-node h1:U+uoH859zMY5LR/pRoLQt3ruhLO6APCg6J9sJgTxGuQ=
 github.com/thesixnetwork/cosmos-sdk v0.45.6-six-special-node/go.mod h1:7SccqVMzyfZpUuZwetAJSsQeuUqgtEu4cmGYnEs9Bog=
-github.com/thesixnetwork/go-ethereum v1.13.6-0.20250124101134-14fdcaa7286b h1:knXHc2jU9w7pLqRzASX7961wecbM8HbH5l9n11jEgIM=
-github.com/thesixnetwork/go-ethereum v1.13.6-0.20250124101134-14fdcaa7286b/go.mod h1:yMTu38GSuyxaYzQMViqNmQ1s3cE84abZexQmTgenWk0=
+github.com/thesixnetwork/go-ethereum v1.13.6-0.20250124104738-8b1b112dc9a5 h1:3Qp9pImdk/hwoxtzS1xs9Wz+ynrN2PQxjf+2S1hXpYg=
+github.com/thesixnetwork/go-ethereum v1.13.6-0.20250124104738-8b1b112dc9a5/go.mod h1:yMTu38GSuyxaYzQMViqNmQ1s3cE84abZexQmTgenWk0=
 github.com/tidwall/gjson v1.6.7/go.mod h1:zeFuBCIqD4sN/gmqBzZ4j7Jd6UcA2Fc56x7QFsv+8fI=
 github.com/tidwall/match v1.0.3/go.mod h1:eRSPERbgtNPcGhD8UCthc6PmLEQXEWd3PRB5JTxsfmM=
 github.com/tidwall/pretty v1.0.2/go.mod h1:XNkn88O1ChpSDQmQeStsy+sBenx6DDtFZJxhVysOjyk=
