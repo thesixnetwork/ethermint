@@ -299,7 +299,6 @@ func (ctd CanTransferDecorator) AnteHandle(ctx sdk.Context, tx sdk.Tx, simulate 
 			SkipAccountChecks: false,
 		}
 
-
 		// NOTE: pass in an empty coinbase address and nil tracer as we don't need them for the check below
 		cfg := &evmtypes.EVMConfig{
 			ChainConfig: ethCfg,
@@ -371,12 +370,14 @@ func (ctd CanTransferDecorator) AnteHandle(ctx sdk.Context, tx sdk.Tx, simulate 
 // EthIncrementSenderSequenceDecorator increments the sequence of the signers.
 type EthIncrementSenderSequenceDecorator struct {
 	ak evmtypes.AccountKeeper
+	unsafeUnorderedTx bool
 }
 
 // NewEthIncrementSenderSequenceDecorator creates a new EthIncrementSenderSequenceDecorator.
-func NewEthIncrementSenderSequenceDecorator(ak evmtypes.AccountKeeper) EthIncrementSenderSequenceDecorator {
+func NewEthIncrementSenderSequenceDecorator(ak evmtypes.AccountKeeper, unsafeUnorderedTx bool) EthIncrementSenderSequenceDecorator {
 	return EthIncrementSenderSequenceDecorator{
 		ak: ak,
+		unsafeUnorderedTx: unsafeUnorderedTx,
 	}
 }
 
@@ -390,11 +391,7 @@ func (issd EthIncrementSenderSequenceDecorator) AnteHandle(ctx sdk.Context, tx s
 			return ctx, sdkerrors.Wrapf(sdkerrors.ErrUnknownRequest, "invalid message type %T, expected %T", msg, (*evmtypes.MsgEthereumTx)(nil))
 		}
 
-		txData, err := evmtypes.UnpackTxData(msgEthTx.Data)
-		if err != nil {
-			return ctx, sdkerrors.Wrap(err, "failed to unpack tx data")
-		}
-
+		tx := msgEthTx.AsTransaction()
 		// increase sequence of sender
 		acc := issd.ak.GetAccount(ctx, msgEthTx.GetFrom())
 		if acc == nil {
@@ -405,13 +402,15 @@ func (issd EthIncrementSenderSequenceDecorator) AnteHandle(ctx sdk.Context, tx s
 		}
 		nonce := acc.GetSequence()
 
-		// we merged the nonce verification to nonce increment, so when tx includes multiple messages
-		// with same sender, they'll be accepted.
-		if txData.GetNonce() != nonce {
-			return ctx, sdkerrors.Wrapf(
-				sdkerrors.ErrInvalidSequence,
-				"invalid nonce; got %d, expected %d", txData.GetNonce(), nonce,
-			)
+		if !issd.unsafeUnorderedTx {
+			// we merged the nonce verification to nonce increment, so when tx includes multiple messages
+			// with same sender, they'll be accepted.
+			if tx.Nonce() != nonce {
+				return ctx, sdkerrors.Wrapf(
+					sdkerrors.ErrInvalidSequence,
+					"invalid nonce; got %d, expected %d", tx.Nonce(), nonce,
+				)
+			}
 		}
 
 		if err := acc.SetSequence(nonce + 1); err != nil {

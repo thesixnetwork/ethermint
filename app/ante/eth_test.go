@@ -157,7 +157,7 @@ func (suite AnteTestSuite) TestNewEthAccountVerificationDecorator() {
 
 func (suite AnteTestSuite) TestEthNonceVerificationDecorator() {
 	suite.SetupTest()
-	dec := ante.NewEthIncrementSenderSequenceDecorator(suite.app.AccountKeeper)
+	dec := ante.NewEthIncrementSenderSequenceDecorator(suite.app.AccountKeeper, suite.unsafeUnorderedTx)
 
 	addr := tests.GenerateAddress()
 
@@ -398,7 +398,7 @@ func (suite AnteTestSuite) TestCanTransferDecorator() {
 }
 
 func (suite AnteTestSuite) TestEthIncrementSenderSequenceDecorator() {
-	dec := ante.NewEthIncrementSenderSequenceDecorator(suite.app.AccountKeeper)
+	dec := ante.NewEthIncrementSenderSequenceDecorator(suite.app.AccountKeeper, suite.unsafeUnorderedTx)
 	addr, privKey := tests.NewAddrKey()
 
 	contract := evmtypes.NewTxContract(suite.app.EvmKeeper.ChainID(), 0, big.NewInt(10), 1000, big.NewInt(1), nil, nil, nil, nil)

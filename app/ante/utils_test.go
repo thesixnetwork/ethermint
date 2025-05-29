@@ -53,6 +53,7 @@ type AnteTestSuite struct {
 	enableFeemarket bool
 	enableLondonHF  bool
 	evmParamsOption func(*evmtypes.Params)
+	unsafeUnorderedTx bool
 }
 
 const TestGasLimit uint64 = 100000

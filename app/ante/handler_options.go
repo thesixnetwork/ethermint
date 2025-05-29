@@ -26,6 +26,7 @@ type HandlerOptions struct {
 	SignModeHandler authsigning.SignModeHandler
 	SigGasConsumer  func(meter sdk.GasMeter, sig signing.SignatureV2, params authtypes.Params) error
 	MaxTxGasWanted  uint64
+	UnsafeUnorderedTx bool
 }
 
 func (options HandlerOptions) Validate() error {
@@ -57,7 +58,7 @@ func newEthAnteHandler(options HandlerOptions) sdk.AnteHandler {
 		NewEthAccountVerificationDecorator(options.AccountKeeper, options.EvmKeeper),
 		NewCanTransferDecorator(options.EvmKeeper),
 		NewEthGasConsumeDecorator(options.EvmKeeper, options.MaxTxGasWanted),
-		NewEthIncrementSenderSequenceDecorator(options.AccountKeeper), // innermost AnteDecorator.
+		NewEthIncrementSenderSequenceDecorator(options.AccountKeeper, options.UnsafeUnorderedTx), // innermost AnteDecorator.
 		NewGasWantedDecorator(options.EvmKeeper, options.FeeMarketKeeper),
 		NewEthEmitEventDecorator(options.EvmKeeper), // emit eth tx hash and index at the very last ante handler.
 	)
